@@ -1,10 +1,507 @@
-<!DOCTYPE html>
-<html>
-  <body style="margin:0; background:#000">
-    <video controls autoplay style="width:100%; height:100%">
-      <source src="https://node553-sector2587749.eu.cold-storage.cdn50.cc/81/810fdd8cc13cda851d0d8ea3f577f2fa/506c7572696275732e5330314530322e343830702e5745422e444c2e4475626c652e4d794d6f76697a2e6d7034/EAEBBN/1763525299/b854a7fc83d51db75044474f8757a67285dcdc==/5.106.195.159/1150/">
-      Video cannot be played.
-    </video>
-  </body>
-</html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Video Player - Auto Hide & Loading</title>
+<style>
+  :root{
+    --bg:#070707;
+    --panel:#110000;
+    --accent:#ff4444;
+    --muted:#ffb6b6;
+    --glass: rgba(255,68,68,0.06);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#050506 0%,#0b0b0d 100%);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,Helvetica;direction:ltr}
+  
+  .player-wrap{
+    position:relative;
+    max-width:960px;
+    margin:28px auto;
+    background:linear-gradient(180deg,#000 0%,#080000 60%);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 12px 50px rgba(8,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+    border:1px solid rgba(255,68,68,0.04);
+    /* برای مخفی کردن نشانگر موس وقتی کنترل‌ها مخفی هستند */
+    cursor: default;
+  }
 
+  /* --- Auto-Hide Styles --- */
+  .player-wrap.hide-controls {
+    cursor: none; /* مخفی کردن موس */
+  }
+  
+  .player-wrap.hide-controls .controls,
+  .player-wrap.hide-controls .big-play {
+    opacity: 0;
+    pointer-events: none; /* جلوگیری از کلیک وقتی مخفی هستند */
+    transition: opacity 0.4s ease;
+  }
+
+  video{width:100%;height:auto;display:block;background:#000}
+  
+  .controls{
+    position:absolute;left:0;right:0;bottom:0;padding:14px;
+    background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(8,0,0,0.6) 40%, rgba(0,0,0,0.9) 100%);
+    box-sizing:border-box;
+    backdrop-filter: blur(0px);
+    transition: opacity 0.3s ease;
+    opacity: 1;
+  }
+
+  .row{display:flex;align-items:center;gap:10px}
+  .left{display:flex;align-items:center;gap:10px}
+  
+  button.icon{
+    background:transparent;border:0;color:#fff;padding:8px;border-radius:10px;cursor:pointer;font-size:16px;
+    transition:background .18s, transform .12s;
+  }
+  button.icon:hover{background:var(--glass); transform:translateY(-2px)}
+  
+  .big-play{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;
+    background:linear-gradient(135deg,var(--accent),#ff8b8b);
+    border-radius:999px;border:0;padding:18px 22px;font-size:22px;color:#fff;cursor:pointer;
+    box-shadow:0 10px 30px rgba(255,68,68,0.14);
+    transition: opacity 0.3s ease, transform 0.2s;
+  }
+  .big-play:hover{ transform:translate(-50%,-50%) scale(1.05); }
+  .big-play.hidden{display:none}
+  
+  .progress{
+    height:8px;background:rgba(255,68,68,0.06);border-radius:999px;position:relative;cursor:pointer;flex:1;overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  .progress .bar{
+    height:100%;
+    background:linear-gradient(90deg,var(--accent),#ffb3b3);
+    width:0%;
+    transition:width .08s linear;
+    border-radius:999px;
+  }
+  .thumb{
+    position:absolute;top:50%;transform:translateY(-50%) translateX(-50%);width:14px;height:14px;background:#ffeded;border-radius:50%;left:0;
+    box-shadow:0 4px 14px rgba(0,0,0,0.6);pointer-events:none;opacity:0;transition:opacity .12s, left .08s;
+  }
+  .progress:hover .thumb{opacity:1}
+  .time{font-size:13px;color:var(--muted);min-width:96px;text-align:left}
+  .right{display:flex;align-items:center;gap:8px}
+  
+  .menu{position:relative}
+  .menu .panel{
+    position:absolute;left:0;bottom:48px;background:linear-gradient(180deg,#120000,#150000);
+    padding:6px;border-radius:10px;min-width:140px;box-shadow:0 12px 32px rgba(0,0,0,.6);display:none;z-index:30;border:1px solid rgba(255,68,68,0.04)
+  }
+  .menu .panel button{display:block;width:100%;text-align:left;padding:10px;border:0;background:transparent;color:#fff;cursor:pointer;border-radius:8px;font-size:14px}
+  .menu .panel button:hover{background:rgba(255,68,68,0.03)}
+  
+  .seek-tooltip{position:absolute;padding:6px 8px;background:#160000;border-radius:6px;font-size:12px;transform:translate(-50%,-140%);display:none;pointer-events:none;border:1px solid rgba(255,68,68,0.04)}
+  .subtitle{position:absolute;left:50%;transform:translateX(-50%);bottom:72px;color:#fff;background:linear-gradient(180deg,rgba(8,0,0,0.7),rgba(8,0,0,0.4));padding:8px 12px;border-radius:8px;font-size:15px;max-width:85%;text-align:center; transition: bottom 0.3s ease;}
+  .subtitle.hidden{display:none}
+  
+  /* وقتی کنترل‌ها مخفی میشن، زیرنویس کمی بیاد پایین‌تر که قشنگ‌تر بشه */
+  .player-wrap.hide-controls .subtitle { bottom: 20px; }
+
+  .controls .muted{opacity:.6}
+  .small{font-size:13px;padding:6px 8px;border-radius:8px;background:rgba(255,68,68,0.04);border:1px solid rgba(255,68,68,0.06)}
+
+  /* --- LOADING SPINNER STYLES --- */
+  .loader-wrap {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+    display: none; /* پیش‌فرض مخفی */
+    justify-content: center; align-items: center;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .loader-wrap.active { display: flex; }
+
+  .loader { position: relative; width: 100%; height: 100%; }
+  .loader > div {
+    position: absolute;
+    width: 5px; height: 16px; /* اندازه مستطیل‌ها */
+    background: #ffffff;
+    border-radius: 4px;
+    opacity: 0;
+    left: 50%; top: 50%;
+    transform-origin: center; /* مرکز دوران */
+    animation: loader-fade 1s linear infinite;
+  }
+
+  /* انیمیشن چشمک زن */
+  @keyframes loader-fade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* تنظیم موقعیت و تاخیر زمانی برای 16 مستطیل */
+  /* 360 درجه تقسیم بر 16 میشه 22.5 درجه فاصله هر کدام */
+  /* فاصله از مرکز (translateY) رو تنظیم میکنیم */
+  
+  .loader > div:nth-child(1)  { transform: translate(-50%, -50%) rotate(0deg) translate(0, -20px); animation-delay: 0s; }
+  .loader > div:nth-child(2)  { transform: translate(-50%, -50%) rotate(22.5deg) translate(0, -20px); animation-delay: -0.9375s; }
+  .loader > div:nth-child(3)  { transform: translate(-50%, -50%) rotate(45deg) translate(0, -20px); animation-delay: -0.875s; }
+  .loader > div:nth-child(4)  { transform: translate(-50%, -50%) rotate(67.5deg) translate(0, -20px); animation-delay: -0.8125s; }
+  .loader > div:nth-child(5)  { transform: translate(-50%, -50%) rotate(90deg) translate(0, -20px); animation-delay: -0.75s; }
+  .loader > div:nth-child(6)  { transform: translate(-50%, -50%) rotate(112.5deg) translate(0, -20px); animation-delay: -0.6875s; }
+  .loader > div:nth-child(7)  { transform: translate(-50%, -50%) rotate(135deg) translate(0, -20px); animation-delay: -0.625s; }
+  .loader > div:nth-child(8)  { transform: translate(-50%, -50%) rotate(157.5deg) translate(0, -20px); animation-delay: -0.5625s; }
+  .loader > div:nth-child(9)  { transform: translate(-50%, -50%) rotate(180deg) translate(0, -20px); animation-delay: -0.5s; }
+  .loader > div:nth-child(10) { transform: translate(-50%, -50%) rotate(202.5deg) translate(0, -20px); animation-delay: -0.4375s; }
+  .loader > div:nth-child(11) { transform: translate(-50%, -50%) rotate(225deg) translate(0, -20px); animation-delay: -0.375s; }
+  .loader > div:nth-child(12) { transform: translate(-50%, -50%) rotate(247.5deg) translate(0, -20px); animation-delay: -0.3125s; }
+  .loader > div:nth-child(13) { transform: translate(-50%, -50%) rotate(270deg) translate(0, -20px); animation-delay: -0.25s; }
+  .loader > div:nth-child(14) { transform: translate(-50%, -50%) rotate(292.5deg) translate(0, -20px); animation-delay: -0.1875s; }
+  .loader > div:nth-child(15) { transform: translate(-50%, -50%) rotate(315deg) translate(0, -20px); animation-delay: -0.125s; }
+  .loader > div:nth-child(16) { transform: translate(-50%, -50%) rotate(337.5deg) translate(0, -20px); animation-delay: -0.0625s; }
+
+
+  @media (max-width:640px){
+    .controls{padding:10px}
+    .big-play{padding:12px 14px;font-size:18px}
+    .time{min-width:74px;font-size:12px}
+  }
+</style>
+</head>
+<body>
+
+<div class="player-wrap" id="playerWrap">
+  <video id="video" preload="metadata" playsinline crossorigin="anonymous" poster="">
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <source id="main-src" src="https://node272-sector8559613.eu.cold-storage.cdn50.cc/f4/f495689da6c6622d1fff895963dfc793/3731335f506c7572696275732e5330314530332e373230702e5745422e444c2e4475626c652e4d794d6f76697a2e6d7034/EAEBBN/1763545304/b0312ca72bf461346910016e0231fe4435dcdc==/86.55.158.6/1150/" type="video/mp4">
+    <track id="track-en" label="English" kind="subtitles" srclang="en" src="" default>
+    Your browser does not support the video tag.
+  </video>
+
+  <div class="loader-wrap" id="loaderWrap">
+    <div class="loader">
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+
+  <button id="bigPlay" class="big-play">► Play</button>
+
+  <div class="subtitle hidden" id="subtitle"></div>
+
+  <div class="controls">
+    <div class="row" style="margin-bottom:10px">
+      <div class="left" style="flex:1">
+        <button id="playBtn" class="icon" title="Play / Pause">►</button>
+        <button id="muteBtn" class="icon" title="Mute">🔊</button>
+        <input id="volume" type="range" min="0" max="1" step="0.01" value="1" style="width:96px">
+        <div style="width:6px"></div>
+        <div class="progress" id="progress">
+          <div class="bar" id="bar"></div>
+          <div class="thumb" id="thumb"></div>
+          <div class="seek-tooltip" id="seekTooltip">00:00</div>
+        </div>
+      </div>
+      <div class="time" id="time">00:00 / 00:00</div>
+    </div>
+
+    <div class="row" style="justify-content:space-between">
+      <div class="left">
+        <div class="menu">
+          <button id="speedBtn" class="icon">1×</button>
+          <div class="panel" id="speedPanel" aria-hidden="true">
+            <button data-speed="0.5">0.5×</button>
+            <button data-speed="0.75">0.75×</button>
+            <button data-speed="1">1×</button>
+            <button data-speed="1.25">1.25×</button>
+            <button data-speed="1.5">1.5×</button>
+            <button data-speed="2">2×</button>
+          </div>
+        </div>
+
+        <div class="menu">
+          <button id="ccBtn" class="icon">CC</button>
+          <div class="panel" id="ccPanel" aria-hidden="true">
+            <button data-cc="on">On</button>
+            <button data-cc="off">Off</button>
+          </div>
+        </div>
+
+        <button id="pipBtn" class="icon" title="Picture-in-Picture">⤢</button>
+      </div>
+
+      <div class="right">
+        <button id="fsBtn" class="icon" title="Fullscreen">⤢</button>
+        <button id="downloadBtn" class="icon small" title="Download">⬇ Download</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const playerWrap = document.getElementById('playerWrap');
+  const playBtn = document.getElementById('playBtn');
+  const bigPlay = document.getElementById('bigPlay');
+  const muteBtn = document.getElementById('muteBtn');
+  const volume = document.getElementById('volume');
+  const progress = document.getElementById('progress');
+  const bar = document.getElementById('bar');
+  const thumb = document.getElementById('thumb');
+  const time = document.getElementById('time');
+  const speedBtn = document.getElementById('speedBtn');
+  const speedPanel = document.getElementById('speedPanel');
+  const ccBtn = document.getElementById('ccBtn');
+  const ccPanel = document.getElementById('ccPanel');
+  const fsBtn = document.getElementById('fsBtn');
+  const pipBtn = document.getElementById('pipBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const seekTooltip = document.getElementById('seekTooltip');
+  const subtitleEl = document.getElementById('subtitle');
+  const trackEl = document.getElementById('track-en');
+  const loaderWrap = document.getElementById('loaderWrap');
+
+  video.controls = false;
+  video.preload = 'metadata';
+  let isDragging = false;
+  let wasPlaying = false;
+  let hideControlsTimer; // تایمر برای مخفی کردن کنترل‌ها
+
+  function formatTime(s){
+    if (!isFinite(s)) return '00:00';
+    const h = Math.floor(s/3600);
+    const m = Math.floor((s%3600)/60);
+    const sec = Math.floor(s%60);
+    if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  video.addEventListener('timeupdate', ()=>{
+    const pct = (video.currentTime / (video.duration || 1)) * 100;
+    bar.style.width = pct + '%';
+    thumb.style.left = pct + '%';
+    time.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+  });
+
+  video.addEventListener('loadedmetadata', ()=>{
+    time.textContent = `${formatTime(0)} / ${formatTime(video.duration)}`;
+  });
+
+  function togglePlay(){
+    if (video.paused) { video.play(); }
+    else { video.pause(); }
+  }
+  
+  playBtn.addEventListener('click', togglePlay);
+  bigPlay.addEventListener('click', togglePlay);
+  
+  video.addEventListener('play', ()=>{
+    playBtn.textContent = '❚❚';
+    bigPlay.classList.add('hidden');
+    startHideTimer(); // شروع تایمر مخفی سازی
+  });
+  
+  video.addEventListener('pause', ()=>{
+    playBtn.textContent = '►';
+    bigPlay.classList.remove('hidden');
+    showControls(); // نمایش کنترل‌ها در حالت توقف
+    stopHideTimer(); // توقف تایمر
+  });
+
+  // --- Auto Hide Logic ---
+  function showControls() {
+    playerWrap.classList.remove('hide-controls');
+  }
+
+  function hideControls() {
+    // اگر ویدیو در حال پخش است و منویی باز نیست، مخفی کن
+    if (!video.paused && speedPanel.style.display !== 'block' && ccPanel.style.display !== 'block') {
+      playerWrap.classList.add('hide-controls');
+    }
+  }
+
+  function startHideTimer() {
+    stopHideTimer();
+    hideControlsTimer = setTimeout(hideControls, 3000); // بعد از 3 ثانیه
+  }
+
+  function stopHideTimer() {
+    clearTimeout(hideControlsTimer);
+  }
+
+  // وقتی موس حرکت میکنه
+  playerWrap.addEventListener('mousemove', () => {
+    showControls();
+    if (!video.paused) startHideTimer();
+  });
+
+  // وقتی موس خارج میشه
+  playerWrap.addEventListener('mouseleave', () => {
+    if (!video.paused) hideControls();
+  });
+  // --- End Auto Hide Logic ---
+
+
+  volume.addEventListener('input', ()=>{ video.volume = volume.value; video.muted = video.volume===0; updateMuteIcon(); });
+  muteBtn.addEventListener('click', ()=>{ video.muted = !video.muted; if (!video.muted) volume.value = video.volume; updateMuteIcon(); });
+  function updateMuteIcon(){ muteBtn.textContent = video.muted || video.volume===0 ? '🔈' : '🔊'; }
+
+  function seekToClientX(clientX){
+    const rect = progress.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    video.currentTime = pct * (video.duration || 0);
+  }
+  
+  progress.addEventListener('mousedown', e=>{
+    isDragging = true;
+    wasPlaying = !video.paused;
+    if (wasPlaying) video.pause();
+    seekToClientX(e.clientX);
+    showControls(); // هنگام کشیدن نوار، کنترل‌ها نمایش داده شوند
+    stopHideTimer();
+  });
+  
+  window.addEventListener('mousemove', e=>{
+    if (isDragging) seekToClientX(e.clientX);
+    const rect = progress.getBoundingClientRect();
+    const x = Math.max(rect.left, Math.min(rect.right, e.clientX));
+    const pct = (x - rect.left) / rect.width;
+    seekTooltip.style.left = (pct*100) + '%';
+    seekTooltip.style.display = 'block';
+    const t = pct * (video.duration || 0);
+    seekTooltip.textContent = formatTime(t);
+  });
+  
+  window.addEventListener('mouseup', e=>{
+    if (isDragging){ 
+      isDragging = false; 
+      if (wasPlaying) {
+        video.play(); 
+      }
+    }
+    seekTooltip.style.display = 'none';
+    if (!video.paused) startHideTimer();
+  });
+  
+  progress.addEventListener('click', e=>{ seekToClientX(e.clientX); });
+
+  speedBtn.addEventListener('click', ()=>{ 
+    speedPanel.style.display = speedPanel.style.display==='block' ? 'none' : 'block'; 
+    showControls(); 
+    stopHideTimer(); // تا وقتی منو بازه مخفی نشه
+  });
+  
+  speedPanel.addEventListener('click', e=>{
+    const s = e.target.dataset.speed;
+    if (!s) return;
+    video.playbackRate = parseFloat(s);
+    speedBtn.textContent = s + '×';
+    speedPanel.style.display = 'none';
+    if (!video.paused) startHideTimer();
+  });
+
+  ccBtn.addEventListener('click', ()=>{ 
+    ccPanel.style.display = ccPanel.style.display==='block' ? 'none' : 'block'; 
+    showControls();
+    stopHideTimer();
+  });
+  
+  ccPanel.addEventListener('click', e=>{
+    const mode = e.target.dataset.cc;
+    if (mode === 'on'){
+      if (!trackEl.src) {
+        const vtt = "WEBVTT\n\n00:00.000 --> 10:00.000\nYour video is playing.";
+        const blob = new Blob([vtt], {type:'text/vtt'});
+        trackEl.src = URL.createObjectURL(blob);
+      }
+      trackEl.mode = 'showing';
+      subtitleEl.classList.remove('hidden');
+      subtitleEl.textContent = '';
+    } else {
+      trackEl.mode = 'disabled';
+      subtitleEl.classList.add('hidden');
+    }
+    ccPanel.style.display = 'none';
+    if (!video.paused) startHideTimer();
+  });
+
+  fsBtn.addEventListener('click', ()=>{
+    if (!document.fullscreenElement) playerWrap.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  });
+
+  downloadBtn.addEventListener('click', ()=>{
+    const src = document.getElementById('main-src')?.src || video.querySelector('source')?.src;
+    if (!src) return alert('Download link not available');
+    const a = document.createElement('a');
+    a.href = src;
+    a.download = src.split('/').pop().split('?')[0] || 'video.mp4';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  pipBtn.addEventListener('click', async ()=>{
+    try {
+      if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
+    } catch(e){ console.warn(e); }
+  });
+
+  // --- Loading Spinner Events ---
+  video.addEventListener('waiting', () => {
+    loaderWrap.classList.add('active');
+  });
+  video.addEventListener('playing', () => {
+    loaderWrap.classList.remove('active');
+  });
+  video.addEventListener('canplay', () => {
+    loaderWrap.classList.remove('active');
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    showControls();
+    if (!video.paused) startHideTimer();
+    
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.key === 'ArrowRight') video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
+    if (e.key === 'ArrowLeft') video.currentTime = Math.max(0, video.currentTime - 10);
+    if (e.key === 'f') fsBtn.click();
+  });
+
+})();
+</script>
+</body>
+</html>
