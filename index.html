@@ -3,14 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Video Player - Auto Hide & Loading</title>
+<title>Video Player - Updated Features</title>
 <style>
   :root{
+    /* رنگ‌های جدید سرخ براق */
     --bg:#070707;
-    --panel:#110000;
-    --accent:#ff4444;
-    --muted:#ffb6b6;
-    --glass: rgba(255,68,68,0.06);
+    --panel:#1c0000; /* پنل‌ها کمی تیره‌تر */
+    --accent:#FF3B3B; /* رنگ اصلی سرخ */
+    --accent-light:#FF7070; /* رنگ روشن‌تر سرخ */
+    --muted:#FFB6B6; /* رنگ متن‌های کم‌رنگ */
+    --glass: rgba(255,59,59,0.1); /* شفافیت سرخ برای hover */
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:linear-gradient(180deg,#050506 0%,#0b0b0d 100%);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,Helvetica;direction:ltr}
@@ -19,24 +21,23 @@
     position:relative;
     max-width:960px;
     margin:28px auto;
-    background:linear-gradient(180deg,#000 0%,#080000 60%);
+    background:linear-gradient(180deg,#000 0%,#0a0000 60%); /* تغییر رنگ پس‌زمینه پلیر */
     border-radius:14px;
     overflow:hidden;
     box-shadow:0 12px 50px rgba(8,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
-    border:1px solid rgba(255,68,68,0.04);
-    /* برای مخفی کردن نشانگر موس وقتی کنترل‌ها مخفی هستند */
+    border:1px solid rgba(255,59,59,0.08); /* رنگ Border */
     cursor: default;
   }
 
   /* --- Auto-Hide Styles --- */
   .player-wrap.hide-controls {
-    cursor: none; /* مخفی کردن موس */
+    cursor: none;
   }
   
   .player-wrap.hide-controls .controls,
   .player-wrap.hide-controls .big-play {
     opacity: 0;
-    pointer-events: none; /* جلوگیری از کلیک وقتی مخفی هستند */
+    pointer-events: none;
     transition: opacity 0.4s ease;
   }
 
@@ -44,7 +45,7 @@
   
   .controls{
     position:absolute;left:0;right:0;bottom:0;padding:14px;
-    background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(8,0,0,0.6) 40%, rgba(0,0,0,0.9) 100%);
+    background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(10,0,0,0.6) 40%, rgba(0,0,0,0.9) 100%); /* پس‌زمینه کنترل‌ها */
     box-sizing:border-box;
     backdrop-filter: blur(0px);
     transition: opacity 0.3s ease;
@@ -62,27 +63,29 @@
   
   .big-play{
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;
-    background:linear-gradient(135deg,var(--accent),#ff8b8b);
+    background:linear-gradient(135deg,var(--accent),var(--accent-light)); /* رنگ دکمه پخش بزرگ */
     border-radius:999px;border:0;padding:18px 22px;font-size:22px;color:#fff;cursor:pointer;
-    box-shadow:0 10px 30px rgba(255,68,68,0.14);
+    box-shadow:0 10px 30px rgba(255,59,59,0.2); /* سایه سرخ */
     transition: opacity 0.3s ease, transform 0.2s;
   }
   .big-play:hover{ transform:translate(-50%,-50%) scale(1.05); }
   .big-play.hidden{display:none}
   
   .progress{
-    height:8px;background:rgba(255,68,68,0.06);border-radius:999px;position:relative;cursor:pointer;flex:1;overflow:hidden;
+    height:8px;background:rgba(255,59,59,0.08); /* رنگ پیشرفت */
+    border-radius:999px;position:relative;cursor:pointer;flex:1;overflow:hidden;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.02);
   }
   .progress .bar{
     height:100%;
-    background:linear-gradient(90deg,var(--accent),#ffb3b3);
+    background:linear-gradient(90deg,var(--accent),var(--accent-light)); /* رنگ نوار پیشرفت */
     width:0%;
     transition:width .08s linear;
     border-radius:999px;
   }
   .thumb{
-    position:absolute;top:50%;transform:translateY(-50%) translateX(-50%);width:14px;height:14px;background:#ffeded;border-radius:50%;left:0;
+    position:absolute;top:50%;transform:translateY(-50%) translateX(-50%);width:14px;height:14px;background:#ffebeb; /* رنگ thumb */
+    border-radius:50%;left:0;
     box-shadow:0 4px 14px rgba(0,0,0,0.6);pointer-events:none;opacity:0;transition:opacity .12s, left .08s;
   }
   .progress:hover .thumb{opacity:1}
@@ -91,21 +94,25 @@
   
   .menu{position:relative}
   .menu .panel{
-    position:absolute;left:0;bottom:48px;background:linear-gradient(180deg,#120000,#150000);
-    padding:6px;border-radius:10px;min-width:140px;box-shadow:0 12px 32px rgba(0,0,0,.6);display:none;z-index:30;border:1px solid rgba(255,68,68,0.04)
+    position:absolute;left:0;bottom:48px;background:linear-gradient(180deg,var(--panel),var(--panel)); /* رنگ پنل منوها */
+    padding:6px;border-radius:10px;min-width:140px;box-shadow:0 12px 32px rgba(0,0,0,.6);display:none;z-index:30;border:1px solid rgba(255,59,59,0.08) /* Border پنل */
   }
   .menu .panel button{display:block;width:100%;text-align:left;padding:10px;border:0;background:transparent;color:#fff;cursor:pointer;border-radius:8px;font-size:14px}
-  .menu .panel button:hover{background:rgba(255,68,68,0.03)}
+  .menu .panel button:hover{background:rgba(255,59,59,0.06);} /* هاور روی دکمه‌های پنل */
   
-  .seek-tooltip{position:absolute;padding:6px 8px;background:#160000;border-radius:6px;font-size:12px;transform:translate(-50%,-140%);display:none;pointer-events:none;border:1px solid rgba(255,68,68,0.04)}
-  .subtitle{position:absolute;left:50%;transform:translateX(-50%);bottom:72px;color:#fff;background:linear-gradient(180deg,rgba(8,0,0,0.7),rgba(8,0,0,0.4));padding:8px 12px;border-radius:8px;font-size:15px;max-width:85%;text-align:center; transition: bottom 0.3s ease;}
+  .seek-tooltip{position:absolute;padding:6px 8px;background:#200000;border-radius:6px;font-size:12px;transform:translate(-50%,-140%);display:none;pointer-events:none;border:1px solid rgba(255,59,59,0.08)} /* رنگ Tooltip */
+  .subtitle{position:absolute;left:50%;transform:translateX(-50%);bottom:72px;color:#fff;background:linear-gradient(180deg,rgba(10,0,0,0.7),rgba(10,0,0,0.4));padding:8px 12px;border-radius:8px;font-size:15px;max-width:85%;text-align:center; transition: bottom 0.3s ease;} /* پس‌زمینه زیرنویس */
   .subtitle.hidden{display:none}
   
   /* وقتی کنترل‌ها مخفی میشن، زیرنویس کمی بیاد پایین‌تر که قشنگ‌تر بشه */
   .player-wrap.hide-controls .subtitle { bottom: 20px; }
 
   .controls .muted{opacity:.6}
-  .small{font-size:13px;padding:6px 8px;border-radius:8px;background:rgba(255,68,68,0.04);border:1px solid rgba(255,68,68,0.06)}
+  .small{
+    font-size:13px;padding:6px 8px;border-radius:8px;
+    background:rgba(255,59,59,0.08); /* رنگ دکمه کوچک */
+    border:1px solid rgba(255,59,59,0.12) /* Border دکمه کوچک */
+  }
 
   /* --- LOADING SPINNER STYLES --- */
   .loader-wrap {
@@ -124,7 +131,7 @@
   .loader > div {
     position: absolute;
     width: 5px; height: 16px; /* اندازه مستطیل‌ها */
-    background: #ffffff;
+    background: var(--accent); /* رنگ اسپینر از accent */
     border-radius: 4px;
     opacity: 0;
     left: 50%; top: 50%;
@@ -167,41 +174,70 @@
   }
 </style>
 </head>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <body>
 
 <div class="player-wrap" id="playerWrap">
   <video id="video" preload="metadata" playsinline crossorigin="anonymous" poster="">
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     <source id="main-src" src="https://node272-sector8559613.eu.cold-storage.cdn50.cc/f4/f495689da6c6622d1fff895963dfc793/3731335f506c7572696275732e5330314530332e373230702e5745422e444c2e4475626c652e4d794d6f76697a2e6d7034/EAEBBN/1763545304/b0312ca72bf461346910016e0231fe4435dcdc==/86.55.158.6/1150/" type="video/mp4">
     <track id="track-en" label="English" kind="subtitles" srclang="en" src="" default>
     Your browser does not support the video tag.
@@ -258,8 +294,7 @@
           </div>
         </div>
 
-        <button id="pipBtn" class="icon" title="Picture-in-Picture">⤢</button>
-      </div>
+        <button id="pipBtn" class="icon" title="Picture-in-Picture">⧉</button> </div>
 
       <div class="right">
         <button id="fsBtn" class="icon" title="Fullscreen">⤢</button>
@@ -327,6 +362,10 @@
   playBtn.addEventListener('click', togglePlay);
   bigPlay.addEventListener('click', togglePlay);
   
+  // --- Double-click to Play/Pause ---
+  video.addEventListener('dblclick', togglePlay);
+  // --- End Double-click Logic ---
+
   video.addEventListener('play', ()=>{
     playBtn.textContent = '❚❚';
     bigPlay.classList.add('hidden');
