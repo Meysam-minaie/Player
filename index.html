@@ -3,302 +3,332 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Video Player - Updated Features</title>
+<title>YouTube Perfect Clone</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
   :root{
-    /* رنگ‌های جدید سرخ براق */
-    --bg:#070707;
-    --panel:#1c0000; /* پنل‌ها کمی تیره‌تر */
-    --accent:#FF3B3B; /* رنگ اصلی سرخ */
-    --accent-light:#FF7070; /* رنگ روشن‌تر سرخ */
-    --muted:#FFB6B6; /* رنگ متن‌های کم‌رنگ */
-    --glass: rgba(255,59,59,0.1); /* شفافیت سرخ برای hover */
+    --accent: #FF0000; 
+    --pill-bg: rgba(255, 255, 255, 0.1); 
+    --pill-bg-hover: rgba(255, 255, 255, 0.2);
+    --panel-bg: rgba(33, 33, 33, 0.98);
+    --text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,#050506 0%,#0b0b0d 100%);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,Helvetica;direction:ltr}
+
+  * { box-sizing: border-box; outline: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   
-  .player-wrap{
-    position:relative;
-    max-width:960px;
-    margin:28px auto;
-    background:linear-gradient(180deg,#000 0%,#0a0000 60%); /* تغییر رنگ پس‌زمینه پلیر */
-    border-radius:14px;
-    overflow:hidden;
-    box-shadow:0 12px 50px rgba(8,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
-    border:1px solid rgba(255,59,59,0.08); /* رنگ Border */
+  html, body {
+    height: 100%; margin: 0; 
+    background: #000; 
+    color: #fff; 
+    font-family: Roboto, Arial, sans-serif;
+  }
+
+  /* --- Player Container --- */
+  .player-wrap {
+    position: relative;
+    max-width: 960px;
+    margin: 28px auto;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     cursor: default;
   }
-
-  /* --- Auto-Hide Styles --- */
-  .player-wrap.hide-controls {
-    cursor: none;
-  }
   
-  .player-wrap.hide-controls .controls,
-  .player-wrap.hide-controls .big-play {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s ease;
-  }
+  .player-wrap.hide-controls { cursor: none; }
+  .player-wrap.hide-controls .controls { opacity: 0; pointer-events: none; }
+  /* وقتی کنترل‌ها مخفی هستند، دکمه وسط هم باید محو شود مگر اینکه ویدیو پاز باشد */
+  .player-wrap.hide-controls .center-play-overlay { opacity: 0; }
+  /* استثنا: اگر ویدیو پاز است، دکمه وسط همیشه بماند حتی اگر موس رفت */
+  .player-wrap.paused .center-play-overlay { opacity: 1 !important; cursor: pointer; }
+  .player-wrap.paused { cursor: default !important; } /* نمایش موس در حالت پاز */
+  .player-wrap.paused .controls { opacity: 1 !important; pointer-events: auto !important; } /* نمایش کنترل‌ها در حالت پاز */
 
-  video{width:100%;height:auto;display:block;background:#000}
-  
-  .controls{
-    position:absolute;left:0;right:0;bottom:0;padding:14px;
-    background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(10,0,0,0.6) 40%, rgba(0,0,0,0.9) 100%); /* پس‌زمینه کنترل‌ها */
-    box-sizing:border-box;
-    backdrop-filter: blur(0px);
+  video { width: 100%; height: auto; display: block; }
+
+  /* --- Controls Bar --- */
+  .controls {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 0 16px 12px 16px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0));
     transition: opacity 0.3s ease;
-    opacity: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
   }
 
-  .row{display:flex;align-items:center;gap:10px}
-  .left{display:flex;align-items:center;gap:10px}
-  
-  button.icon{
-    background:transparent;border:0;color:#fff;padding:8px;border-radius:10px;cursor:pointer;font-size:16px;
-    transition:background .18s, transform .12s;
+  /* --- Progress Bar --- */
+  .progress-wrap {
+    height: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
   }
-  button.icon:hover{background:var(--glass); transform:translateY(-2px)}
-  
-  .big-play{
-    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;
-    background:linear-gradient(135deg,var(--accent),var(--accent-light)); /* رنگ دکمه پخش بزرگ */
-    border-radius:999px;border:0;padding:18px 22px;font-size:22px;color:#fff;cursor:pointer;
-    box-shadow:0 10px 30px rgba(255,59,59,0.2); /* سایه سرخ */
-    transition: opacity 0.3s ease, transform 0.2s;
+  .progress {
+    width: 100%; height: 4px;
+    background: rgba(255,255,255,0.3);
+    position: relative; border-radius: 2px;
+    transition: height 0.1s;
   }
-  .big-play:hover{ transform:translate(-50%,-50%) scale(1.05); }
-  .big-play.hidden{display:none}
-  
-  .progress{
-    height:8px;background:rgba(255,59,59,0.08); /* رنگ پیشرفت */
-    border-radius:999px;position:relative;cursor:pointer;flex:1;overflow:hidden;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,0.02);
-  }
-  .progress .bar{
-    height:100%;
-    background:linear-gradient(90deg,var(--accent),var(--accent-light)); /* رنگ نوار پیشرفت */
-    width:0%;
-    transition:width .08s linear;
-    border-radius:999px;
-  }
-  .thumb{
-    position:absolute;top:50%;transform:translateY(-50%) translateX(-50%);width:14px;height:14px;background:#ffebeb; /* رنگ thumb */
-    border-radius:50%;left:0;
-    box-shadow:0 4px 14px rgba(0,0,0,0.6);pointer-events:none;opacity:0;transition:opacity .12s, left .08s;
-  }
-  .progress:hover .thumb{opacity:1}
-  .time{font-size:13px;color:var(--muted);min-width:96px;text-align:left}
-  .right{display:flex;align-items:center;gap:8px}
-  
-  .menu{position:relative}
-  .menu .panel{
-    position:absolute;left:0;bottom:48px;background:linear-gradient(180deg,var(--panel),var(--panel)); /* رنگ پنل منوها */
-    padding:6px;border-radius:10px;min-width:140px;box-shadow:0 12px 32px rgba(0,0,0,.6);display:none;z-index:30;border:1px solid rgba(255,59,59,0.08) /* Border پنل */
-  }
-  .menu .panel button{display:block;width:100%;text-align:left;padding:10px;border:0;background:transparent;color:#fff;cursor:pointer;border-radius:8px;font-size:14px}
-  .menu .panel button:hover{background:rgba(255,59,59,0.06);} /* هاور روی دکمه‌های پنل */
-  
-  .seek-tooltip{position:absolute;padding:6px 8px;background:#200000;border-radius:6px;font-size:12px;transform:translate(-50%,-140%);display:none;pointer-events:none;border:1px solid rgba(255,59,59,0.08)} /* رنگ Tooltip */
-  .subtitle{position:absolute;left:50%;transform:translateX(-50%);bottom:72px;color:#fff;background:linear-gradient(180deg,rgba(10,0,0,0.7),rgba(10,0,0,0.4));padding:8px 12px;border-radius:8px;font-size:15px;max-width:85%;text-align:center; transition: bottom 0.3s ease;} /* پس‌زمینه زیرنویس */
-  .subtitle.hidden{display:none}
-  
-  /* وقتی کنترل‌ها مخفی میشن، زیرنویس کمی بیاد پایین‌تر که قشنگ‌تر بشه */
-  .player-wrap.hide-controls .subtitle { bottom: 20px; }
+  .progress-wrap:hover .progress { height: 6px; }
 
-  .controls .muted{opacity:.6}
-  .small{
-    font-size:13px;padding:6px 8px;border-radius:8px;
-    background:rgba(255,59,59,0.08); /* رنگ دکمه کوچک */
-    border:1px solid rgba(255,59,59,0.12) /* Border دکمه کوچک */
+  .progress .bar {
+    height: 100%; background: var(--accent);
+    width: 0%; border-radius: 2px; position: relative;
+  }
+  .progress .bar::after {
+    content: ''; position: absolute; right: -6px; top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: 13px; height: 13px;
+    background: var(--accent); border-radius: 50%;
+    transition: transform 0.1s;
+  }
+  .progress-wrap:hover .progress .bar::after { transform: translateY(-50%) scale(1); }
+
+  /* --- Row Layout --- */
+  .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .section-left, .section-right { display: flex; align-items: center; gap: 10px; }
+  .section-center-spacer { flex-grow: 1; }
+
+  /* --- Icons --- */
+  button.icon {
+    background: transparent; border: 0; color: #fff;
+    padding: 0; margin: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s; position: relative;
+  }
+  button.icon i { font-size: 24px; filter: drop-shadow(var(--text-shadow)); }
+  
+  button.icon.disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+  button.icon.active::after {
+    content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 3px; background-color: var(--accent); border-radius: 2px;
   }
 
-  /* --- LOADING SPINNER STYLES --- */
+  /* --- Capsules --- */
+  #playBtn { width: 44px; height: 44px; background: var(--pill-bg); border-radius: 50%; }
+  #playBtn:hover { background: var(--pill-bg-hover); }
+
+  .volume-control {
+    position: relative; background: var(--pill-bg);
+    border-radius: 999px; height: 44px; width: 44px;
+    display: flex; align-items: center; overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .volume-control:hover { width: 140px; background: var(--pill-bg-hover); }
+  #muteBtn { width: 44px; height: 44px; flex-shrink: 0; z-index: 2; }
+  #volume {
+    width: 80px; margin-left: 2px; margin-right: 14px;
+    cursor: pointer; opacity: 0; transition: opacity 0.2s 0.1s;
+    background: transparent; -webkit-appearance: none;
+  }
+  .volume-control:hover #volume { opacity: 1; }
+  #volume::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.4); border-radius: 2px; }
+  #volume::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #fff; margin-top: -4px; }
+
+  .time-display {
+    height: 44px; padding: 0 20px;
+    background: var(--pill-bg); border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; 
+  }
+
+  .section-right .icon-group {
+    height: 44px; background: var(--pill-bg); border-radius: 999px;
+    display: flex; align-items: center; padding: 0 8px; position: relative;
+  }
+  .section-right .icon-group button.icon { width: 36px; height: 36px; border-radius: 50%; }
+  .section-right .icon-group button.icon:hover { background: rgba(255,255,255,0.15); }
+
+  /* --- Tooltip --- */
+  .seek-tooltip {
+    position: absolute; bottom: 30px; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px;
+    font-size: 12px; opacity: 0; pointer-events: none; transition: opacity 0.1s;
+  }
+  .progress-wrap:hover .seek-tooltip { opacity: 1; }
+
+  /* --- Settings Popup --- */
+  .settings-menu-container {
+    position: absolute; bottom: 55px; right: 0; width: 260px;
+    background: var(--panel-bg); border-radius: 12px;
+    overflow: hidden; display: none; z-index: 100;
+    opacity: 0; transform: translateY(10px);
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  }
+  .settings-menu-container.active { display: block; opacity: 1; transform: translateY(0); }
+  
+  .menu-content { display: none; flex-direction: column; padding: 8px 0; }
+  .menu-content.active-panel { display: flex; animation: fadeInPanel 0.2s ease; }
+  @keyframes fadeInPanel { from { opacity: 0; } to { opacity: 1; } }
+
+  .panel-header {
+    display: flex; align-items: center; padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px;
+    color: #eee; font-size: 15px;
+  }
+  .panel-header button { margin-right: 10px; padding: 6px; border-radius: 50%; }
+  .panel-header button:hover { background: rgba(255,255,255,0.1); }
+
+  .menu-item {
+    width: 100%; text-align: left; padding: 10px 16px;
+    background: transparent; border: 0; color: #f1f1f1; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; font-weight: 400;
+  }
+  .menu-item:hover { background: rgba(255,255,255,0.1); }
+  .menu-item .left-icon { margin-right: 12px; font-size: 20px; color: #aaa; }
+  .menu-value { opacity: 0.7; font-size: 13px; display: flex; align-items: center; gap: 4px;}
+  .menu-item.selected::before { content: '✓'; margin-right: 10px; font-weight: bold; color: var(--accent); }
+  .menu-item:not(.selected) { padding-left: 35px; }
+
+  /* --- Loader --- */
   .loader-wrap {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px; height: 60px;
-    display: none; /* پیش‌فرض مخفی */
-    justify-content: center; align-items: center;
-    z-index: 50;
-    pointer-events: none;
+    position: absolute; inset: 0; pointer-events: none; display: none;
+    align-items: center; justify-content: center; z-index: 5;
   }
   .loader-wrap.active { display: flex; }
+  .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
 
-  .loader { position: relative; width: 100%; height: 100%; }
-  .loader > div {
-    position: absolute;
-    width: 5px; height: 16px; /* اندازه مستطیل‌ها */
-    background: var(--accent); /* رنگ اسپینر از accent */
-    border-radius: 4px;
-    opacity: 0;
-    left: 50%; top: 50%;
-    transform-origin: center; /* مرکز دوران */
-    animation: loader-fade 1s linear infinite;
+  /* --- Center Play Button (Static & Overlay) --- */
+  /* این دکمه جایگزین فیدبک متضاد می‌شود و فقط وقتی پاز است نمایش داده می‌شود */
+  .center-play-overlay {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 64px; height: 64px;
+    background: rgba(0,0,0,0.6); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; pointer-events: none; opacity: 0; /* مخفی در حالت پخش */
+    transition: opacity 0.2s, transform 0.1s;
+    backdrop-filter: blur(2px);
+    z-index: 10;
   }
+  /* وقتی هاور شود کمی بزرگ شود */
+  .center-play-overlay:hover { transform: translate(-50%, -50%) scale(1.1); background: var(--accent); }
+  .center-play-overlay i { font-size: 36px; color: #fff; margin-left: 4px; /* اصلاح مرکزیت مثلث */ }
 
-  /* انیمیشن چشمک زن */
-  @keyframes loader-fade {
-    0% { opacity: 1; }
-    100% { opacity: 0; }
+  /* --- Feedback Animation (Only for seek) --- */
+  .seek-feedback {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 64px; height: 64px; background: rgba(0,0,0,0.5); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; z-index: 11;
   }
+  .seek-feedback.show { animation: feedbackFade 0.6s ease-out forwards; }
+  @keyframes feedbackFade { 0% { opacity: 1; transform: translate(-50%,-50%) scale(0.8); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); } }
 
-  /* تنظیم موقعیت و تاخیر زمانی برای 16 مستطیل */
-  /* 360 درجه تقسیم بر 16 میشه 22.5 درجه فاصله هر کدام */
-  /* فاصله از مرکز (translateY) رو تنظیم میکنیم */
-  
-  .loader > div:nth-child(1)  { transform: translate(-50%, -50%) rotate(0deg) translate(0, -20px); animation-delay: 0s; }
-  .loader > div:nth-child(2)  { transform: translate(-50%, -50%) rotate(22.5deg) translate(0, -20px); animation-delay: -0.9375s; }
-  .loader > div:nth-child(3)  { transform: translate(-50%, -50%) rotate(45deg) translate(0, -20px); animation-delay: -0.875s; }
-  .loader > div:nth-child(4)  { transform: translate(-50%, -50%) rotate(67.5deg) translate(0, -20px); animation-delay: -0.8125s; }
-  .loader > div:nth-child(5)  { transform: translate(-50%, -50%) rotate(90deg) translate(0, -20px); animation-delay: -0.75s; }
-  .loader > div:nth-child(6)  { transform: translate(-50%, -50%) rotate(112.5deg) translate(0, -20px); animation-delay: -0.6875s; }
-  .loader > div:nth-child(7)  { transform: translate(-50%, -50%) rotate(135deg) translate(0, -20px); animation-delay: -0.625s; }
-  .loader > div:nth-child(8)  { transform: translate(-50%, -50%) rotate(157.5deg) translate(0, -20px); animation-delay: -0.5625s; }
-  .loader > div:nth-child(9)  { transform: translate(-50%, -50%) rotate(180deg) translate(0, -20px); animation-delay: -0.5s; }
-  .loader > div:nth-child(10) { transform: translate(-50%, -50%) rotate(202.5deg) translate(0, -20px); animation-delay: -0.4375s; }
-  .loader > div:nth-child(11) { transform: translate(-50%, -50%) rotate(225deg) translate(0, -20px); animation-delay: -0.375s; }
-  .loader > div:nth-child(12) { transform: translate(-50%, -50%) rotate(247.5deg) translate(0, -20px); animation-delay: -0.3125s; }
-  .loader > div:nth-child(13) { transform: translate(-50%, -50%) rotate(270deg) translate(0, -20px); animation-delay: -0.25s; }
-  .loader > div:nth-child(14) { transform: translate(-50%, -50%) rotate(292.5deg) translate(0, -20px); animation-delay: -0.1875s; }
-  .loader > div:nth-child(15) { transform: translate(-50%, -50%) rotate(315deg) translate(0, -20px); animation-delay: -0.125s; }
-  .loader > div:nth-child(16) { transform: translate(-50%, -50%) rotate(337.5deg) translate(0, -20px); animation-delay: -0.0625s; }
-
-
-  @media (max-width:640px){
-    .controls{padding:10px}
-    .big-play{padding:12px 14px;font-size:18px}
-    .time{min-width:74px;font-size:12px}
-  }
 </style>
 </head>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <body>
 
-<div class="player-wrap" id="playerWrap">
-  <video id="video" preload="metadata" playsinline crossorigin="anonymous" poster="">
-    <source id="main-src" src="https://node272-sector8559613.eu.cold-storage.cdn50.cc/f4/f495689da6c6622d1fff895963dfc793/3731335f506c7572696275732e5330314530332e373230702e5745422e444c2e4475626c652e4d794d6f76697a2e6d7034/EAEBBN/1763545304/b0312ca72bf461346910016e0231fe4435dcdc==/86.55.158.6/1150/" type="video/mp4">
-    <track id="track-en" label="English" kind="subtitles" srclang="en" src="" default>
-    Your browser does not support the video tag.
+<div class="player-wrap paused" id="playerWrap"> <video id="video" preload="metadata" playsinline crossorigin="anonymous" poster="https://via.placeholder.com/960x540/000000/FFFFFF?text=YouTube+Player">
+    <source src="https://as7.cdn.asset.aparat.com/aparat-video/fd16d0f1ab8a485e6ae03a050f89ee2827659679-240p.mp4?wmsAuthSign=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbiI6Ijk2ZmYxMTQ5MmU2ZTNhMzBmMDhmOWRjOTMyYWRlM2I5IiwiZXhwIjoxNzYzNTU2NTgwLCJpc3MiOiJTYWJhIElkZWEgR1NJRyJ9.n3i9oeNRc5fjSyLCGQG2Uvr0sn0bYcdEycvlOKFhhqc" type="video/mp4">
+    <track label="English" kind="subtitles" srclang="en" src=""> 
   </video>
 
-  <div class="loader-wrap" id="loaderWrap">
-    <div class="loader">
-      <div></div><div></div><div></div><div></div>
-      <div></div><div></div><div></div><div></div>
-      <div></div><div></div><div></div><div></div>
-      <div></div><div></div><div></div><div></div>
-    </div>
+  <div class="loader-wrap" id="loaderWrap"><div class="spinner"></div></div>
+
+  <div class="center-play-overlay" id="centerPlayBtn">
+    <i class="material-icons">play_arrow</i>
   </div>
 
-  <button id="bigPlay" class="big-play">► Play</button>
-
-  <div class="subtitle hidden" id="subtitle"></div>
-
+  <div class="seek-feedback" id="seekFeedback">
+    <i class="material-icons">forward_5</i>
+  </div>
+  
   <div class="controls">
-    <div class="row" style="margin-bottom:10px">
-      <div class="left" style="flex:1">
-        <button id="playBtn" class="icon" title="Play / Pause">►</button>
-        <button id="muteBtn" class="icon" title="Mute">🔊</button>
-        <input id="volume" type="range" min="0" max="1" step="0.01" value="1" style="width:96px">
-        <div style="width:6px"></div>
-        <div class="progress" id="progress">
-          <div class="bar" id="bar"></div>
-          <div class="thumb" id="thumb"></div>
-          <div class="seek-tooltip" id="seekTooltip">00:00</div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <div class="seek-tooltip" id="seekTooltip">00:00</div> 
+    </div>
+    
+    <div class="controls-row">
+      <div class="section-left">
+        <button id="playBtn" class="icon" title="Play / Pause">
+          <i class="material-icons">play_arrow</i>
+        </button>
+        <div class="volume-control">
+          <button id="muteBtn" class="icon" title="Mute">
+            <i class="material-icons" id="muteIcon">volume_up</i>
+          </button>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
+        </div>
+        <div class="time-display">
+          <span id="currentTime">00:00</span>&nbsp;/&nbsp;<span id="totalDuration">00:00</span>
         </div>
       </div>
-      <div class="time" id="time">00:00 / 00:00</div>
-    </div>
 
-    <div class="row" style="justify-content:space-between">
-      <div class="left">
-        <div class="menu">
-          <button id="speedBtn" class="icon">1×</button>
-          <div class="panel" id="speedPanel" aria-hidden="true">
-            <button data-speed="0.5">0.5×</button>
-            <button data-speed="0.75">0.75×</button>
-            <button data-speed="1">1×</button>
-            <button data-speed="1.25">1.25×</button>
-            <button data-speed="1.5">1.5×</button>
-            <button data-speed="2">2×</button>
+      <div class="section-center-spacer"></div>
+
+      <div class="section-right">
+        <div class="icon-group">
+          
+          <button id="ccBtn" class="icon" title="Subtitles">
+            <i class="material-icons">closed_caption</i>
+          </button>
+          
+          <button id="settingsBtn" class="icon" title="Settings">
+            <i class="material-icons">settings</i>
+          </button>
+
+          <div class="settings-menu-container" id="settingsMenu">
+            <div class="menu-content active-panel" id="mainMenuPanel">
+               <button class="menu-item" id="toSpeedBtn">
+                 <div style="display:flex; align-items:center">
+                    <i class="material-icons left-icon">slow_motion_video</i> <span>Playback Speed</span>
+                 </div>
+                 <div class="menu-value">
+                    <span id="currentSpeedText">Normal</span>
+                    <i class="material-icons" style="font-size:16px;">chevron_right</i>
+                 </div>
+               </button>
+               <button class="menu-item" id="toQualityBtn">
+                 <div style="display:flex; align-items:center">
+                    <i class="material-icons left-icon">tune</i> <span>Quality</span>
+                 </div>
+                 <div class="menu-value">
+                    <span id="currentQualityText">1080p</span>
+                    <i class="material-icons" style="font-size:16px;">chevron_right</i>
+                 </div>
+               </button>
+            </div>
+
+            <div class="menu-content" id="speedPanel">
+                <div class="panel-header">
+                   <button class="icon" id="backFromSpeed"><i class="material-icons">arrow_back</i></button>
+                   <span>Playback Speed</span>
+                </div>
+                <button class="menu-item" data-speed="0.25">0.25</button>
+                <button class="menu-item" data-speed="0.5">0.5</button>
+                <button class="menu-item" data-speed="0.75">0.75</button>
+                <button class="menu-item selected" data-speed="1">Normal</button>
+                <button class="menu-item" data-speed="1.25">1.25</button>
+                <button class="menu-item" data-speed="1.5">1.5</button>
+                <button class="menu-item" data-speed="2">2</button>
+            </div>
+
+            <div class="menu-content" id="qualityPanel">
+                <div class="panel-header">
+                   <button class="icon" id="backFromQuality"><i class="material-icons">arrow_back</i></button>
+                   <span>Quality</span>
+                </div>
+                <button class="menu-item selected" data-quality="1080">1080p</button>
+                <button class="menu-item" data-quality="720">720p</button>
+                <button class="menu-item" data-quality="480">480p</button>
+                <button class="menu-item" data-quality="auto">Auto</button>
+            </div>
           </div>
+          
+          <button id="pipBtn" class="icon" title="PiP">
+            <i class="material-icons">picture_in_picture_alt</i>
+          </button>
+          <button id="fsBtn" class="icon" title="Fullscreen">
+            <i class="material-icons">fullscreen</i>
+          </button>
         </div>
-
-        <div class="menu">
-          <button id="ccBtn" class="icon">CC</button>
-          <div class="panel" id="ccPanel" aria-hidden="true">
-            <button data-cc="on">On</button>
-            <button data-cc="off">Off</button>
-          </div>
-        </div>
-
-        <button id="pipBtn" class="icon" title="Picture-in-Picture">⧉</button> </div>
-
-      <div class="right">
-        <button id="fsBtn" class="icon" title="Fullscreen">⤢</button>
-        <button id="downloadBtn" class="icon small" title="Download">⬇ Download</button>
       </div>
     </div>
   </div>
@@ -309,236 +339,238 @@
   const video = document.getElementById('video');
   const playerWrap = document.getElementById('playerWrap');
   const playBtn = document.getElementById('playBtn');
-  const bigPlay = document.getElementById('bigPlay');
+  const centerPlayBtn = document.getElementById('centerPlayBtn');
   const muteBtn = document.getElementById('muteBtn');
-  const volume = document.getElementById('volume');
-  const progress = document.getElementById('progress');
+  const muteIcon = document.getElementById('muteIcon');
+  const volumeSlider = document.getElementById('volume');
+  const progressWrap = document.getElementById('progressWrap');
   const bar = document.getElementById('bar');
-  const thumb = document.getElementById('thumb');
-  const time = document.getElementById('time');
-  const speedBtn = document.getElementById('speedBtn');
-  const speedPanel = document.getElementById('speedPanel');
-  const ccBtn = document.getElementById('ccBtn');
-  const ccPanel = document.getElementById('ccPanel');
+  const currentTimeEl = document.getElementById('currentTime');
+  const totalDurationEl = document.getElementById('totalDuration');
+  const seekTooltip = document.getElementById('seekTooltip'); 
   const fsBtn = document.getElementById('fsBtn');
   const pipBtn = document.getElementById('pipBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const seekTooltip = document.getElementById('seekTooltip');
-  const subtitleEl = document.getElementById('subtitle');
-  const trackEl = document.getElementById('track-en');
   const loaderWrap = document.getElementById('loaderWrap');
+  const seekFeedback = document.getElementById('seekFeedback');
+  const ccBtn = document.getElementById('ccBtn');
 
-  video.controls = false;
-  video.preload = 'metadata';
+  // Settings Elements
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsMenu = document.getElementById('settingsMenu');
+  const mainMenuPanel = document.getElementById('mainMenuPanel');
+  const speedPanel = document.getElementById('speedPanel');
+  const qualityPanel = document.getElementById('qualityPanel');
+  const toSpeedBtn = document.getElementById('toSpeedBtn');
+  const toQualityBtn = document.getElementById('toQualityBtn');
+  const backFromSpeed = document.getElementById('backFromSpeed');
+  const backFromQuality = document.getElementById('backFromQuality');
+  const currentSpeedText = document.getElementById('currentSpeedText');
+  const currentQualityText = document.getElementById('currentQualityText');
+
+  video.controls = false; 
+  let hideControlsTimer;
   let isDragging = false;
-  let wasPlaying = false;
-  let hideControlsTimer; // تایمر برای مخفی کردن کنترل‌ها
 
-  function formatTime(s){
-    if (!isFinite(s)) return '00:00';
-    const h = Math.floor(s/3600);
-    const m = Math.floor((s%3600)/60);
-    const sec = Math.floor(s%60);
-    if (h>0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  // --- Subtitle Logic ---
+  function initSubtitles() {
+    // اگر ترک زیرنویس وجود نداشت یا سورسش خالی بود
+    const hasTrack = video.textTracks.length > 0 && video.querySelector('track').getAttribute('src') !== "";
+    if(!hasTrack) {
+        ccBtn.classList.add('disabled');
+    } else {
+        ccBtn.classList.remove('disabled');
+        video.textTracks[0].mode = 'hidden'; 
+    }
+  }
+  video.addEventListener('loadedmetadata', initSubtitles);
+
+  ccBtn.addEventListener('click', () => {
+    if(ccBtn.classList.contains('disabled')) return;
+    const track = video.textTracks[0];
+    const isHidden = track.mode === 'hidden';
+    track.mode = isHidden ? 'showing' : 'hidden';
+    // تغییر ظاهری (خط قرمز)
+    if(track.mode === 'showing') ccBtn.classList.add('active');
+    else ccBtn.classList.remove('active');
+  });
+
+  // --- Settings Popup Logic ---
+  function closeMenu() {
+    settingsMenu.classList.remove('active');
+    setTimeout(() => {
+        mainMenuPanel.classList.add('active-panel');
+        speedPanel.classList.remove('active-panel');
+        qualityPanel.classList.remove('active-panel');
+    }, 200);
+  }
+  function switchPanel(hide, show) {
+    hide.classList.remove('active-panel');
+    show.classList.add('active-panel');
   }
 
-  video.addEventListener('timeupdate', ()=>{
-    const pct = (video.currentTime / (video.duration || 1)) * 100;
-    bar.style.width = pct + '%';
-    thumb.style.left = pct + '%';
-    time.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+  settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsMenu.classList.toggle('active'); });
+  toSpeedBtn.addEventListener('click', () => switchPanel(mainMenuPanel, speedPanel));
+  backFromSpeed.addEventListener('click', () => switchPanel(speedPanel, mainMenuPanel));
+  toQualityBtn.addEventListener('click', () => switchPanel(mainMenuPanel, qualityPanel));
+  backFromQuality.addEventListener('click', () => switchPanel(qualityPanel, mainMenuPanel));
+
+  speedPanel.querySelectorAll('.menu-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        video.playbackRate = parseFloat(btn.dataset.speed);
+        speedPanel.querySelectorAll('.menu-item').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentSpeedText.textContent = btn.textContent;
+        switchPanel(speedPanel, mainMenuPanel);
+    });
+  });
+  
+  qualityPanel.querySelectorAll('.menu-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        qualityPanel.querySelectorAll('.menu-item').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentQualityText.textContent = btn.textContent;
+        switchPanel(qualityPanel, mainMenuPanel);
+    });
   });
 
-  video.addEventListener('loadedmetadata', ()=>{
-    time.textContent = `${formatTime(0)} / ${formatTime(video.duration)}`;
+  window.addEventListener('click', (e) => {
+    if(!e.target.closest('.settings-menu-container') && !e.target.closest('#settingsBtn')) closeMenu();
   });
+
+  // --- Play / Pause & Visual Sync ---
+  // تابع اصلی: همگام‌سازی دکمه‌ها با وضعیت ویدیو
+  function updatePlayState() {
+    if(video.paused || video.ended) {
+        // حالت پاز: دکمه وسط نمایش داده شود، دکمه پایین "پلی" باشد
+        playBtn.querySelector('i').textContent = 'play_arrow';
+        centerPlayBtn.style.opacity = '1';
+        centerPlayBtn.style.pointerEvents = 'auto';
+        playerWrap.classList.add('paused'); // برای نمایش کنترل‌ها
+        showControls(); // اطمینان از نمایش کنترل‌ها
+    } else {
+        // حالت پخش: دکمه وسط مخفی، دکمه پایین "پاز" باشد
+        playBtn.querySelector('i').textContent = 'pause';
+        centerPlayBtn.style.opacity = '0';
+        centerPlayBtn.style.pointerEvents = 'none';
+        playerWrap.classList.remove('paused');
+        startHideTimer();
+    }
+  }
 
   function togglePlay(){
-    if (video.paused) { video.play(); }
-    else { video.pause(); }
+    if (video.paused) video.play();
+    else video.pause();
   }
-  
+
   playBtn.addEventListener('click', togglePlay);
-  bigPlay.addEventListener('click', togglePlay);
+  centerPlayBtn.addEventListener('click', togglePlay);
   
-  // --- Double-click to Play/Pause ---
-  video.addEventListener('dblclick', togglePlay);
-  // --- End Double-click Logic ---
-
-  video.addEventListener('play', ()=>{
-    playBtn.textContent = '❚❚';
-    bigPlay.classList.add('hidden');
-    startHideTimer(); // شروع تایمر مخفی سازی
-  });
-  
-  video.addEventListener('pause', ()=>{
-    playBtn.textContent = '►';
-    bigPlay.classList.remove('hidden');
-    showControls(); // نمایش کنترل‌ها در حالت توقف
-    stopHideTimer(); // توقف تایمر
+  // کلیک روی صفحه برای پخش/توقف (اگر روی منو یا کنترل‌ها نبود)
+  video.addEventListener('click', (e) => {
+    if(e.target.closest('.settings-menu-container')) return;
+    togglePlay();
   });
 
-  // --- Auto Hide Logic ---
+  video.addEventListener('play', updatePlayState);
+  video.addEventListener('pause', updatePlayState);
+
+  // --- Feedback Animation (Only for Seek) ---
+  function showSeekFeedback(icon) {
+    seekFeedback.innerHTML = `<i class="material-icons">${icon}</i>`;
+    seekFeedback.classList.remove('show');
+    void seekFeedback.offsetWidth; // Trigger Reflow
+    seekFeedback.classList.add('show');
+  }
+
+  // --- Controls Visibility ---
   function showControls() {
     playerWrap.classList.remove('hide-controls');
+    clearTimeout(hideControlsTimer);
   }
-
   function hideControls() {
-    // اگر ویدیو در حال پخش است و منویی باز نیست، مخفی کن
-    if (!video.paused && speedPanel.style.display !== 'block' && ccPanel.style.display !== 'block') {
+    if (!video.paused && !settingsMenu.classList.contains('active')) {
       playerWrap.classList.add('hide-controls');
     }
   }
-
   function startHideTimer() {
-    stopHideTimer();
-    hideControlsTimer = setTimeout(hideControls, 3000); // بعد از 3 ثانیه
-  }
-
-  function stopHideTimer() {
     clearTimeout(hideControlsTimer);
+    hideControlsTimer = setTimeout(hideControls, 2500);
+  }
+  playerWrap.addEventListener('mousemove', () => { showControls(); if(!video.paused) startHideTimer(); });
+  playerWrap.addEventListener('mouseleave', () => { if(!video.paused) hideControls(); });
+
+  // --- Seek & Time ---
+  function formatTime(s){
+    if (!isFinite(s)) return '00:00';
+    const m = Math.floor(s/60);
+    const sec = Math.floor(s%60);
+    const h = Math.floor(s/3600);
+    if (h > 0) return `${h}:${String(m%60).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${m}:${String(sec).padStart(2,'0')}`;
   }
 
-  // وقتی موس حرکت میکنه
-  playerWrap.addEventListener('mousemove', () => {
-    showControls();
-    if (!video.paused) startHideTimer();
+  video.addEventListener('timeupdate', ()=>{
+    if(!isDragging) {
+        const pct = (video.currentTime / video.duration) * 100;
+        bar.style.width = pct + '%';
+        currentTimeEl.textContent = formatTime(video.currentTime);
+    }
   });
+  video.addEventListener('loadedmetadata', ()=> totalDurationEl.textContent = formatTime(video.duration));
 
-  // وقتی موس خارج میشه
-  playerWrap.addEventListener('mouseleave', () => {
-    if (!video.paused) hideControls();
+  progressWrap.addEventListener('mousedown', (e)=>{ isDragging = true; seek(e); });
+  window.addEventListener('mousemove', (e)=>{
+    if(isDragging) seek(e);
+    if(e.target.closest('.progress-wrap')) {
+        const rect = progressWrap.getBoundingClientRect();
+        const pct = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width;
+        seekTooltip.style.left = (pct*100)+'%';
+        seekTooltip.textContent = formatTime(pct * (video.duration||0));
+    }
   });
-  // --- End Auto Hide Logic ---
-
-
-  volume.addEventListener('input', ()=>{ video.volume = volume.value; video.muted = video.volume===0; updateMuteIcon(); });
-  muteBtn.addEventListener('click', ()=>{ video.muted = !video.muted; if (!video.muted) volume.value = video.volume; updateMuteIcon(); });
-  function updateMuteIcon(){ muteBtn.textContent = video.muted || video.volume===0 ? '🔈' : '🔊'; }
-
-  function seekToClientX(clientX){
-    const rect = progress.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    video.currentTime = pct * (video.duration || 0);
+  window.addEventListener('mouseup', ()=>{ isDragging = false; });
+  
+  function seek(e) {
+    const rect = progressWrap.getBoundingClientRect();
+    const pct = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width;
+    bar.style.width = (pct*100)+'%';
+    video.currentTime = pct * video.duration;
   }
-  
-  progress.addEventListener('mousedown', e=>{
-    isDragging = true;
-    wasPlaying = !video.paused;
-    if (wasPlaying) video.pause();
-    seekToClientX(e.clientX);
-    showControls(); // هنگام کشیدن نوار، کنترل‌ها نمایش داده شوند
-    stopHideTimer();
-  });
-  
-  window.addEventListener('mousemove', e=>{
-    if (isDragging) seekToClientX(e.clientX);
-    const rect = progress.getBoundingClientRect();
-    const x = Math.max(rect.left, Math.min(rect.right, e.clientX));
-    const pct = (x - rect.left) / rect.width;
-    seekTooltip.style.left = (pct*100) + '%';
-    seekTooltip.style.display = 'block';
-    const t = pct * (video.duration || 0);
-    seekTooltip.textContent = formatTime(t);
-  });
-  
-  window.addEventListener('mouseup', e=>{
-    if (isDragging){ 
-      isDragging = false; 
-      if (wasPlaying) {
-        video.play(); 
-      }
-    }
-    seekTooltip.style.display = 'none';
-    if (!video.paused) startHideTimer();
-  });
-  
-  progress.addEventListener('click', e=>{ seekToClientX(e.clientX); });
 
-  speedBtn.addEventListener('click', ()=>{ 
-    speedPanel.style.display = speedPanel.style.display==='block' ? 'none' : 'block'; 
-    showControls(); 
-    stopHideTimer(); // تا وقتی منو بازه مخفی نشه
+  // --- Volume ---
+  volumeSlider.addEventListener('input', () => {
+    video.volume = volumeSlider.value;
+    video.muted = video.volume === 0;
+    updateMuteIcon();
   });
-  
-  speedPanel.addEventListener('click', e=>{
-    const s = e.target.dataset.speed;
-    if (!s) return;
-    video.playbackRate = parseFloat(s);
-    speedBtn.textContent = s + '×';
-    speedPanel.style.display = 'none';
-    if (!video.paused) startHideTimer();
+  muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    volumeSlider.value = video.muted ? 0 : video.volume || 1;
+    updateMuteIcon();
   });
+  function updateMuteIcon() {
+    if(video.muted || video.volume === 0) muteIcon.textContent = 'volume_off';
+    else if(video.volume < 0.5) muteIcon.textContent = 'volume_down';
+    else muteIcon.textContent = 'volume_up';
+  }
 
-  ccBtn.addEventListener('click', ()=>{ 
-    ccPanel.style.display = ccPanel.style.display==='block' ? 'none' : 'block'; 
-    showControls();
-    stopHideTimer();
-  });
-  
-  ccPanel.addEventListener('click', e=>{
-    const mode = e.target.dataset.cc;
-    if (mode === 'on'){
-      if (!trackEl.src) {
-        const vtt = "WEBVTT\n\n00:00.000 --> 10:00.000\nYour video is playing.";
-        const blob = new Blob([vtt], {type:'text/vtt'});
-        trackEl.src = URL.createObjectURL(blob);
-      }
-      trackEl.mode = 'showing';
-      subtitleEl.classList.remove('hidden');
-      subtitleEl.textContent = '';
-    } else {
-      trackEl.mode = 'disabled';
-      subtitleEl.classList.add('hidden');
-    }
-    ccPanel.style.display = 'none';
-    if (!video.paused) startHideTimer();
-  });
+  // --- Fullscreen/PiP/Loader ---
+  fsBtn.addEventListener('click', () => !document.fullscreenElement ? playerWrap.requestFullscreen() : document.exitFullscreen());
+  pipBtn.addEventListener('click', () => document.pictureInPictureElement ? document.exitPictureInPicture() : video.requestPictureInPicture());
+  video.addEventListener('waiting', ()=>loaderWrap.classList.add('active'));
+  video.addEventListener('playing', ()=>loaderWrap.classList.remove('active'));
 
-  fsBtn.addEventListener('click', ()=>{
-    if (!document.fullscreenElement) playerWrap.requestFullscreen?.();
-    else document.exitFullscreen?.();
-  });
-
-  downloadBtn.addEventListener('click', ()=>{
-    const src = document.getElementById('main-src')?.src || video.querySelector('source')?.src;
-    if (!src) return alert('Download link not available');
-    const a = document.createElement('a');
-    a.href = src;
-    a.download = src.split('/').pop().split('?')[0] || 'video.mp4';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  });
-
-  pipBtn.addEventListener('click', async ()=>{
-    try {
-      if (document.pictureInPictureElement) await document.exitPictureInPicture();
-      else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
-    } catch(e){ console.warn(e); }
-  });
-
-  // --- Loading Spinner Events ---
-  video.addEventListener('waiting', () => {
-    loaderWrap.classList.add('active');
-  });
-  video.addEventListener('playing', () => {
-    loaderWrap.classList.remove('active');
-  });
-  video.addEventListener('canplay', () => {
-    loaderWrap.classList.remove('active');
-  });
-
+  // --- Shortcuts ---
   window.addEventListener('keydown', (e)=>{
-    showControls();
-    if (!video.paused) startHideTimer();
-    
-    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-    if (e.key === 'ArrowRight') video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 10);
-    if (e.key === 'ArrowLeft') video.currentTime = Math.max(0, video.currentTime - 10);
-    if (e.key === 'f') fsBtn.click();
+    if(e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if(e.code === 'ArrowRight') { video.currentTime += 5; showSeekFeedback('forward_5'); }
+    if(e.code === 'ArrowLeft') { video.currentTime -= 5; showSeekFeedback('replay_5'); }
+    if(e.key.toLowerCase() === 'f') fsBtn.click();
+    if(e.key.toLowerCase() === 'm') muteBtn.click();
   });
+
+  // Init State
+  updatePlayState();
 
 })();
 </script>
