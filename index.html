@@ -1,51 +1,7 @@
-// functions/stream-proxy.js
-const fetch = require('node-fetch'); // نیاز به نصب node-fetch در Netlify
+<video width="640" height="360" controls>
+  <source src="https://stream1002.hashureplus.com/Movies/2007/0765429/American_Gangster_2007_720p_BrRip_RARBG.mp4" type="video/mp4">
+  <track src="fa.vtt" kind="subtitles" srclang="fa" label="فارسی" default>
+  مرورگر شما از ویدیو پشتیبانی نمی‌کند.
+</video>
 
-exports.handler = async (event, context) => {
-    // آدرس ویدیوی اصلی از پارامتر URL استخراج می‌شود
-    const videoUrl = event.queryStringParameters.url;
 
-    if (!videoUrl) {
-        return {
-            statusCode: 400,
-            body: 'Missing video URL parameter'
-        };
-    }
-
-    try {
-        // درخواست از سمت سرور Netlify به لینک اصلی ارسال می‌شود
-        const response = await fetch(videoUrl);
-
-        if (!response.ok) {
-            return {
-                statusCode: response.status,
-                body: `Error fetching video: ${response.statusText}`
-            };
-        }
-
-        // خواندن محتوای ویدیو و تبدیل به Base64 برای ارسال به مرورگر
-        const buffer = await response.buffer();
-        const base64Body = buffer.toString('base64');
-        
-        // تنظیم هدرها
-        return {
-            statusCode: 200,
-            headers: {
-                // ارسال نوع محتوا که در پخش ویدیو ضروری است
-                'Content-Type': response.headers.get('content-type') || 'video/mp4',
-                // اجازه دسترسی به همه دامنه‌ها
-                'Access-Control-Allow-Origin': '*', 
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            },
-            isBase64Encoded: true,
-            body: base64Body
-        };
-    } catch (error) {
-        return {
-            statusCode: 500,
-            body: `Internal server error: ${error.message}`
-        };
-    }
-};
