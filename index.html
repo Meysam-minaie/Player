@@ -1,7 +1,732 @@
-<video width="640" height="360" controls>
-  <source src="https://stream1002.hashureplus.com/Movies/2007/0765429/American_Gangster_2007_720p_BrRip_RARBG.mp4" type="video/mp4">
-  <track src="fa.vtt" kind="subtitles" srclang="fa" label="فارسی" default>
-  مرورگر شما از ویدیو پشتیبانی نمی‌کند.
-</video>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Meysam Player - American Gangster</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+  :root{
+    --accent: #FF0000; 
+    --pill-bg: rgba(255, 255, 255, 0.1); 
+    --pill-bg-hover: rgba(255, 255, 255, 0.2);
+    --panel-bg: rgba(33, 33, 33, 0.98);
+    --text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+
+  /* --- Subtitle Customization Variables --- */
+  video::cue {
+    color: var(--sub-color, #fff) !important;
+    font-size: var(--sub-size, 1em) !important;
+    /* Note: Transform on cue works in some browsers, others might need specific webkit pseudos */
+    transform: translateY(var(--sub-pos, 0px)) !important; 
+    background-color: rgba(0,0,0,0.5); /* Default semi-transparent background for readability */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+  }
+  /* Webkit specific for better positioning support if needed */
+  video::-webkit-media-text-track-display {
+      transform: translateY(var(--sub-pos, 0px));
+  }
+
+  * { box-sizing: border-box; outline: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  
+  html, body {
+    height: 100%; margin: 0; 
+    background: #000; 
+    color: #fff; 
+    font-family: Roboto, Arial, sans-serif;
+  }
+
+  .player-wrap {
+    position: relative;
+    max-width: 960px;
+    margin: 28px auto;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    cursor: default;
+  }
+  
+  .player-wrap.hide-controls { cursor: none; }
+  .player-wrap.hide-controls .controls { opacity: 0; pointer-events: none; }
+  
+  .player-wrap.paused { cursor: default !important; } 
+  .player-wrap.paused .controls { opacity: 1 !important; pointer-events: auto !important; }
+
+  video { width: 100%; height: auto; display: block; }
+
+  .controls {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 0 16px 12px 16px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0));
+    transition: opacity 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
+  }
+
+  .progress-wrap {
+    height: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .progress {
+    width: 100%; height: 4px;
+    background: rgba(255,255,255,0.3);
+    position: relative; border-radius: 2px;
+    transition: height 0.1s;
+  }
+  .progress-wrap:hover .progress { height: 6px; }
+
+  .progress .bar {
+    height: 100%; background: var(--accent);
+    width: 0%; border-radius: 2px; position: relative;
+  }
+  .progress .bar::after {
+    content: ''; position: absolute; right: -6px; top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: 13px; height: 13px;
+    background: var(--accent); border-radius: 50%;
+    transition: transform 0.1s;
+  }
+  .progress-wrap:hover .progress .bar::after { transform: translateY(-50%) scale(1); }
+
+  .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .section-left, .section-right { display: flex; align-items: center; gap: 10px; }
+  .section-center-spacer { flex-grow: 1; }
+
+  button.icon {
+    background: transparent; border: 0; color: #fff;
+    padding: 0; margin: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s; position: relative;
+  }
+  button.icon i { font-size: 24px; filter: drop-shadow(var(--text-shadow)); }
+  
+  button.icon.disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+  button.icon.active::after {
+    content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 3px; background-color: var(--accent); border-radius: 2px;
+  }
+
+  #playBtn { width: 44px; height: 44px; background: var(--pill-bg); border-radius: 50%; }
+  #playBtn:hover { background: var(--pill-bg-hover); }
+
+  .volume-control {
+    position: relative; background: var(--pill-bg);
+    border-radius: 999px; height: 44px; width: 44px;
+    display: flex; align-items: center; overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .volume-control:hover { width: 140px; background: var(--pill-bg-hover); }
+  #muteBtn { width: 44px; height: 44px; flex-shrink: 0; z-index: 2; }
+  #volume {
+    width: 80px; margin-left: 2px; margin-right: 14px;
+    cursor: pointer; opacity: 0; transition: opacity 0.2s 0.1s;
+    background: transparent; -webkit-appearance: none;
+  }
+  .volume-control:hover #volume { opacity: 1; }
+  #volume::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.4); border-radius: 2px; }
+  #volume::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #fff; margin-top: -4px; }
+
+  .time-display {
+    height: 44px; padding: 0 20px;
+    background: var(--pill-bg); border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; 
+  }
+
+  .section-right .icon-group {
+    height: 44px; background: var(--pill-bg); border-radius: 999px;
+    display: flex; align-items: center; padding: 0 8px; position: relative;
+  }
+  .section-right .icon-group button.icon { width: 36px; height: 36px; border-radius: 50%; }
+  .section-right .icon-group button.icon:hover { background: rgba(255,255,255,0.15); }
+
+  .seek-tooltip {
+    position: absolute; bottom: 30px; transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 4px;
+    font-size: 12px; opacity: 0; pointer-events: none; transition: opacity 0.1s;
+  }
+  .progress-wrap:hover .seek-tooltip { opacity: 1; }
+
+  .settings-menu-container {
+    position: absolute; bottom: 55px; right: 0; width: 260px;
+    background: var(--panel-bg); border-radius: 12px;
+    overflow: hidden; display: none; z-index: 100;
+    opacity: 0; transform: translateY(10px);
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  }
+  .settings-menu-container.active { display: block; opacity: 1; transform: translateY(0); }
+  
+  .menu-content { display: none; flex-direction: column; padding: 8px 0; }
+  .menu-content.active-panel { display: flex; animation: fadeInPanel 0.2s ease; }
+  @keyframes fadeInPanel { from { opacity: 0; } to { opacity: 1; } }
+
+  .panel-header {
+    display: flex; align-items: center; padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px;
+    color: #eee; font-size: 15px;
+  }
+  .panel-header button { margin-right: 10px; padding: 6px; border-radius: 50%; }
+  .panel-header button:hover { background: rgba(255,255,255,0.1); }
+
+  .menu-item {
+    width: 100%; text-align: left; padding: 10px 16px;
+    background: transparent; border: 0; color: #f1f1f1; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 14px; font-weight: 400;
+  }
+  .menu-item:hover { background: rgba(255,255,255,0.1); }
+  .menu-item .left-icon { margin-right: 12px; font-size: 20px; color: #aaa; }
+  .menu-value { opacity: 0.7; font-size: 13px; display: flex; align-items: center; gap: 4px;}
+  .menu-item.selected::before { content: '✓'; margin-right: 10px; font-weight: bold; color: var(--accent); }
+  .menu-item:not(.selected) { padding-left: 35px; }
+
+  /* Color Swatches Styles */
+  .color-grid { display: flex; gap: 10px; padding: 10px 16px; justify-content: center; }
+  .color-swatch { 
+      width: 30px; height: 30px; border-radius: 50%; cursor: pointer; 
+      border: 2px solid transparent; transition: transform 0.2s;
+  }
+  .color-swatch:hover { transform: scale(1.1); }
+  .color-swatch.active-swatch { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+
+  /* Slider Styles for Settings */
+  .setting-slider-wrap { padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .setting-slider { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; }
+  .setting-slider::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; }
+  .setting-slider::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent); margin-top: -6px; }
+
+  .loader-wrap {
+    position: absolute; inset: 0; pointer-events: none; display: none;
+    align-items: center; justify-content: center; z-index: 5;
+  }
+  .loader-wrap.active { display: flex; }
+  .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+
+  .center-play-overlay {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 72px; height: 72px;
+    background: rgba(0,0,0,0.6); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; 
+    opacity: 0; 
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    backdrop-filter: blur(2px);
+    z-index: 10;
+  }
+  
+  .center-play-overlay.show-icon {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .center-play-overlay i { font-size: 42px; color: #fff; }
+
+  .seek-feedback {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 64px; height: 64px; background: rgba(0,0,0,0.5); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; z-index: 11;
+  }
+  .seek-feedback.show { animation: feedbackFade 0.6s ease-out forwards; }
+  @keyframes feedbackFade { 0% { opacity: 1; transform: translate(-50%,-50%) scale(0.8); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); } }
+
+</style>
+</head>
+<body>
+
+<div class="player-wrap paused" id="playerWrap"> 
+  <video width="640" height="360" id="video"> 
+    <source src="https://stream1002.hashureplus.com/Movies/2007/0765429/American_Gangster_2007_720p_BrRip_RARBG.mp4" type="video/mp4">
+    <track src="fa.vtt" kind="subtitles" srclang="fa" label="Persian" default>
+    Your browser does not support the video.
+  </video>
+
+  <div class="loader-wrap" id="loaderWrap"><div class="spinner"></div></div>
+
+  <div class="center-play-overlay" id="centerPlayBtn">
+    <i class="material-icons">play_arrow</i>
+  </div>
+
+  <div class="seek-feedback" id="seekFeedback">
+    <i class="material-icons">forward_5</i>
+  </div>
+  
+  <div class="controls">
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <div class="seek-tooltip" id="seekTooltip">00:00</div> 
+    </div>
+    
+    <div class="controls-row">
+      <div class="section-left">
+        <button id="playBtn" class="icon" title="Play / Pause">
+          <i class="material-icons">play_arrow</i>
+        </button>
+        <div class="volume-control">
+          <button id="muteBtn" class="icon" title="Mute">
+            <i class="material-icons" id="muteIcon">volume_up</i>
+          </button>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
+        </div>
+        <div class="time-display">
+          <span id="currentTime">00:00</span>&nbsp;/&nbsp;<span id="totalDuration">00:00</span>
+        </div>
+      </div>
+
+      <div class="section-center-spacer"></div>
+
+      <div class="section-right">
+        <div class="icon-group">
+          
+          <button id="ccBtn" class="icon" title="Subtitles">
+            <i class="material-icons">closed_caption</i>
+          </button>
+          
+          <button id="settingsBtn" class="icon" title="Settings">
+            <i class="material-icons">settings</i>
+          </button>
+
+          <div class="settings-menu-container" id="settingsMenu">
+            
+            <div class="menu-content active-panel" id="mainMenuPanel">
+               <button class="menu-item" id="toSpeedBtn">
+                 <div style="display:flex; align-items:center">
+                    <i class="material-icons left-icon">slow_motion_video</i> <span>Playback Speed</span>
+                 </div>
+                 <div class="menu-value">
+                    <span id="currentSpeedText">Normal</span>
+                    <i class="material-icons" style="font-size:16px;">chevron_right</i>
+                 </div>
+               </button>
+
+               <button class="menu-item" id="toSubSettingsBtn">
+                 <div style="display:flex; align-items:center">
+                    <i class="material-icons left-icon">text_format</i> <span>Subtitle Style</span>
+                 </div>
+                 <div class="menu-value">
+                    <i class="material-icons" style="font-size:16px;">chevron_right</i>
+                 </div>
+               </button>
+            </div>
+
+            <div class="menu-content" id="speedPanel">
+                <div class="panel-header">
+                   <button class="icon back-btn" data-target="mainMenuPanel"><i class="material-icons">arrow_back</i></button>
+                   <span>Playback Speed</span>
+                </div>
+                <button class="menu-item" data-speed="0.25">0.25</button>
+                <button class="menu-item" data-speed="0.5">0.5</button>
+                <button class="menu-item" data-speed="0.75">0.75</button>
+                <button class="menu-item selected" data-speed="1">Normal</button>
+                <button class="menu-item" data-speed="1.25">1.25</button>
+                <button class="menu-item" data-speed="1.5">1.5</button>
+                <button class="menu-item" data-speed="2">2</button>
+            </div>
+
+            <div class="menu-content" id="subMainPanel">
+                <div class="panel-header">
+                   <button class="icon back-btn" data-target="mainMenuPanel"><i class="material-icons">arrow_back</i></button>
+                   <span>Subtitle Style</span>
+                </div>
+                
+                <button class="menu-item" id="toSubColorBtn">
+                   <div style="display:flex; align-items:center">
+                      <i class="material-icons left-icon">palette</i> <span>Color</span>
+                   </div>
+                   <div class="menu-value"><i class="material-icons" style="font-size:16px;">chevron_right</i></div>
+                </button>
+                
+                <button class="menu-item" id="toSubSizeBtn">
+                   <div style="display:flex; align-items:center">
+                      <i class="material-icons left-icon">format_size</i> <span>Size</span>
+                   </div>
+                   <div class="menu-value"><i class="material-icons" style="font-size:16px;">chevron_right</i></div>
+                </button>
+
+                <button class="menu-item" id="toSubPosBtn">
+                   <div style="display:flex; align-items:center">
+                      <i class="material-icons left-icon">vertical_align_center</i> <span>Position</span>
+                   </div>
+                   <div class="menu-value"><i class="material-icons" style="font-size:16px;">chevron_right</i></div>
+                </button>
+            </div>
+
+            <div class="menu-content" id="subColorPanel">
+                <div class="panel-header">
+                   <button class="icon back-btn" data-target="subMainPanel"><i class="material-icons">arrow_back</i></button>
+                   <span>Text Color</span>
+                </div>
+                <div class="color-grid">
+                   <div class="color-swatch" style="background:#ffffff" data-color="#ffffff"></div>
+                   <div class="color-swatch" style="background:#ffeb3b" data-color="#ffeb3b"></div>
+                   <div class="color-swatch" style="background:#4caf50" data-color="#4caf50"></div>
+                   <div class="color-swatch" style="background:#2196f3" data-color="#2196f3"></div>
+                   <div class="color-swatch" style="background:#f44336" data-color="#f44336"></div>
+                </div>
+            </div>
+
+            <div class="menu-content" id="subSizePanel">
+                <div class="panel-header">
+                   <button class="icon back-btn" data-target="subMainPanel"><i class="material-icons">arrow_back</i></button>
+                   <span>Text Size</span>
+                </div>
+                <div class="setting-slider-wrap">
+                    <input type="range" id="subSizeRange" class="setting-slider" min="0.5" max="2.5" step="0.1" value="1">
+                    <div style="text-align:center; font-size:12px; opacity:0.7">Adjust font size</div>
+                </div>
+            </div>
+
+            <div class="menu-content" id="subPosPanel">
+                <div class="panel-header">
+                   <button class="icon back-btn" data-target="subMainPanel"><i class="material-icons">arrow_back</i></button>
+                   <span>Position (Y)</span>
+                </div>
+                <div class="setting-slider-wrap">
+                    <input type="range" id="subPosRange" class="setting-slider" min="-100" max="100" step="10" value="0">
+                    <div style="text-align:center; font-size:12px; opacity:0.7">Move Up / Down</div>
+                </div>
+            </div>
+
+          </div>
+          
+          <button id="pipBtn" class="icon" title="PiP">
+            <i class="material-icons">picture_in_picture_alt</i>
+          </button>
+          <button id="fsBtn" class="icon" title="Fullscreen">
+            <i class="material-icons">fullscreen</i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const playerWrap = document.getElementById('playerWrap');
+  const playBtn = document.getElementById('playBtn');
+  const centerPlayBtn = document.getElementById('centerPlayBtn');
+  const muteBtn = document.getElementById('muteBtn');
+  const muteIcon = document.getElementById('muteIcon');
+  const volumeSlider = document.getElementById('volume');
+  const progressWrap = document.getElementById('progressWrap');
+  const bar = document.getElementById('bar');
+  const currentTimeEl = document.getElementById('currentTime');
+  const totalDurationEl = document.getElementById('totalDuration');
+  const seekTooltip = document.getElementById('seekTooltip'); 
+  const fsBtn = document.getElementById('fsBtn');
+  const pipBtn = document.getElementById('pipBtn');
+  const loaderWrap = document.getElementById('loaderWrap');
+  const seekFeedback = document.getElementById('seekFeedback');
+  const ccBtn = document.getElementById('ccBtn');
+
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsMenu = document.getElementById('settingsMenu');
+  
+  // Panels
+  const mainMenuPanel = document.getElementById('mainMenuPanel');
+  const speedPanel = document.getElementById('speedPanel');
+  const subMainPanel = document.getElementById('subMainPanel');
+  const subColorPanel = document.getElementById('subColorPanel');
+  const subSizePanel = document.getElementById('subSizePanel');
+  const subPosPanel = document.getElementById('subPosPanel');
+
+  // Navigation Buttons
+  const toSpeedBtn = document.getElementById('toSpeedBtn');
+  const toSubSettingsBtn = document.getElementById('toSubSettingsBtn');
+  const toSubColorBtn = document.getElementById('toSubColorBtn');
+  const toSubSizeBtn = document.getElementById('toSubSizeBtn');
+  const toSubPosBtn = document.getElementById('toSubPosBtn');
+  
+  const currentSpeedText = document.getElementById('currentSpeedText');
+  
+  // Subtitle Input Elements
+  const subSizeRange = document.getElementById('subSizeRange');
+  const subPosRange = document.getElementById('subPosRange');
+  const colorSwatches = document.querySelectorAll('.color-swatch');
+
+  let hideControlsTimer;
+  let isDragging = false;
+  let centerIconTimer;
+
+  function initSubtitles() {
+    const hasTrack = video.textTracks.length > 0 && video.querySelector('track').getAttribute('src') !== "";
+    if(!hasTrack) {
+        ccBtn.classList.add('disabled');
+    } else {
+        ccBtn.classList.remove('disabled');
+        video.textTracks[0].mode = 'hidden'; 
+    }
+  }
+  video.addEventListener('loadedmetadata', initSubtitles);
+  
+  const trackTag = video.querySelector('track');
+  if(trackTag) trackTag.addEventListener('error', () => ccBtn.classList.add('disabled'));
+
+  ccBtn.addEventListener('click', () => {
+    if(ccBtn.classList.contains('disabled')) return;
+    const track = video.textTracks[0];
+    if(!track) return;
+    
+    const isHidden = track.mode === 'hidden';
+    track.mode = isHidden ? 'showing' : 'hidden';
+    if(track.mode === 'showing') ccBtn.classList.add('active');
+    else ccBtn.classList.remove('active');
+  });
+
+  /* --- Settings Menu Logic --- */
+  
+  function closeMenu() {
+    settingsMenu.classList.remove('active');
+    // Reset to main menu after animation
+    setTimeout(() => {
+        document.querySelectorAll('.menu-content').forEach(p => p.classList.remove('active-panel'));
+        mainMenuPanel.classList.add('active-panel');
+    }, 200);
+  }
+
+  function switchPanel(targetPanelId) {
+    // Find currently active panel
+    const active = settingsMenu.querySelector('.active-panel');
+    if(active) active.classList.remove('active-panel');
+    
+    const target = document.getElementById(targetPanelId);
+    if(target) target.classList.add('active-panel');
+  }
+
+  // Generic Back Buttons
+  document.querySelectorAll('.back-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          switchPanel(btn.dataset.target);
+      });
+  });
+
+  settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); settingsMenu.classList.toggle('active'); });
+  window.addEventListener('click', (e) => {
+    if(!e.target.closest('.settings-menu-container') && !e.target.closest('#settingsBtn')) closeMenu();
+  });
+
+  // Main Menu Navigation
+  toSpeedBtn.addEventListener('click', () => switchPanel('speedPanel'));
+  toSubSettingsBtn.addEventListener('click', () => switchPanel('subMainPanel'));
+
+  // Subtitle Menu Navigation
+  toSubColorBtn.addEventListener('click', () => switchPanel('subColorPanel'));
+  toSubSizeBtn.addEventListener('click', () => switchPanel('subSizePanel'));
+  toSubPosBtn.addEventListener('click', () => switchPanel('subPosPanel'));
+
+  /* --- Subtitle Logic & Styling --- */
+  
+  // Load settings from local storage
+  const savedSubSettings = JSON.parse(localStorage.getItem('subSettings')) || {
+      color: '#ffffff',
+      size: 1,
+      pos: 0
+  };
+
+  // Apply saved settings
+  function applySubSettings() {
+      video.style.setProperty('--sub-color', savedSubSettings.color);
+      video.style.setProperty('--sub-size', savedSubSettings.size + 'em');
+      video.style.setProperty('--sub-pos', -savedSubSettings.pos + 'px'); // Invert for intuitive "Up" = negative translateY
+      
+      // Update UI elements
+      subSizeRange.value = savedSubSettings.size;
+      subPosRange.value = savedSubSettings.pos;
+      colorSwatches.forEach(s => {
+         if(s.dataset.color === savedSubSettings.color) s.classList.add('active-swatch');
+         else s.classList.remove('active-swatch');
+      });
+  }
+  applySubSettings();
+
+  function saveSettings() {
+      localStorage.setItem('subSettings', JSON.stringify(savedSubSettings));
+  }
+
+  // 1. Color Logic
+  colorSwatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+          colorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          swatch.classList.add('active-swatch');
+          savedSubSettings.color = swatch.dataset.color;
+          applySubSettings();
+          saveSettings();
+      });
+  });
+
+  // 2. Size Logic
+  subSizeRange.addEventListener('input', (e) => {
+      savedSubSettings.size = e.target.value;
+      applySubSettings();
+      saveSettings();
+  });
+
+  // 3. Position Logic
+  subPosRange.addEventListener('input', (e) => {
+      savedSubSettings.pos = e.target.value;
+      applySubSettings();
+      saveSettings();
+  });
 
 
+  /* --- Speed Logic --- */
+  speedPanel.querySelectorAll('.menu-item:not(.panel-header)').forEach(btn => {
+    btn.addEventListener('click', () => {
+        video.playbackRate = parseFloat(btn.dataset.speed);
+        speedPanel.querySelectorAll('.menu-item').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentSpeedText.textContent = btn.textContent;
+        switchPanel('mainMenuPanel');
+    });
+  });
+
+  function togglePlay(){
+    if (video.paused) video.play();
+    else video.pause();
+  }
+
+  function triggerCenterIcon(iconName) {
+    centerPlayBtn.querySelector('i').textContent = iconName;
+    centerPlayBtn.classList.add('show-icon');
+    
+    clearTimeout(centerIconTimer);
+    centerIconTimer = setTimeout(() => {
+        centerPlayBtn.classList.remove('show-icon');
+    }, 1000); 
+  }
+
+  function updatePlayState() {
+    if(video.paused || video.ended) {
+        playBtn.querySelector('i').textContent = 'play_arrow';
+        playerWrap.classList.add('paused');
+        showControls();
+        triggerCenterIcon('play_arrow');
+    } else {
+        playBtn.querySelector('i').textContent = 'pause';
+        playerWrap.classList.remove('paused');
+        startHideTimer();
+        triggerCenterIcon('pause');
+    }
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  
+  video.addEventListener('click', (e) => {
+    if(e.target.closest('.settings-menu-container')) return;
+    togglePlay();
+  });
+
+  video.addEventListener('play', updatePlayState);
+  video.addEventListener('pause', updatePlayState);
+
+  function showSeekFeedback(icon) {
+    seekFeedback.innerHTML = `<i class="material-icons">${icon}</i>`;
+    seekFeedback.classList.remove('show');
+    void seekFeedback.offsetWidth; 
+    seekFeedback.classList.add('show');
+  }
+
+  function showControls() {
+    playerWrap.classList.remove('hide-controls');
+    clearTimeout(hideControlsTimer);
+  }
+  function hideControls() {
+    if (!video.paused && !settingsMenu.classList.contains('active')) {
+      playerWrap.classList.add('hide-controls');
+    }
+  }
+  function startHideTimer() {
+    clearTimeout(hideControlsTimer);
+    setTimeout(hideControls, 2500);
+  }
+  playerWrap.addEventListener('mousemove', () => { showControls(); if(!video.paused) startHideTimer(); });
+  playerWrap.addEventListener('mouseleave', () => { if(!video.paused) hideControls(); });
+
+  function formatTime(s){
+    if (!isFinite(s)) return '00:00';
+    const m = Math.floor(s/60);
+    const sec = Math.floor(s%60);
+    const h = Math.floor(s/3600);
+    if (h > 0) return `${h}:${String(m%60).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  }
+
+  video.addEventListener('timeupdate', ()=>{
+    if(!isDragging) {
+        const pct = (video.currentTime / video.duration) * 100;
+        bar.style.width = pct + '%';
+        currentTimeEl.textContent = formatTime(video.currentTime);
+    }
+  });
+  video.addEventListener('loadedmetadata', ()=> totalDurationEl.textContent = formatTime(video.duration));
+
+  progressWrap.addEventListener('mousedown', (e)=>{ isDragging = true; seek(e); });
+  window.addEventListener('mousemove', (e)=>{
+    if(isDragging) seek(e);
+    if(e.target.closest('.progress-wrap')) {
+        const rect = progressWrap.getBoundingClientRect();
+        const pct = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width;
+        seekTooltip.style.left = (pct*100)+'%';
+        seekTooltip.textContent = formatTime(pct * (video.duration||0));
+    }
+  });
+  window.addEventListener('mouseup', ()=>{ isDragging = false; });
+  
+  function seek(e) {
+    const rect = progressWrap.getBoundingClientRect();
+    const pct = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width;
+    bar.style.width = (pct*100)+'%';
+    video.currentTime = pct * video.duration;
+  }
+
+  volumeSlider.addEventListener('input', () => {
+    video.volume = volumeSlider.value;
+    video.muted = video.volume === 0;
+    updateMuteIcon();
+  });
+  muteBtn.addEventListener('click', () => {
+    video.muted = !video.muted;
+    volumeSlider.value = video.muted ? 0 : video.volume || 1;
+    updateMuteIcon();
+  });
+  function updateMuteIcon() {
+    if(video.muted || video.volume === 0) muteIcon.textContent = 'volume_off';
+    else if(video.volume < 0.5) muteIcon.textContent = 'volume_down';
+    else muteIcon.textContent = 'volume_up';
+  }
+
+  fsBtn.addEventListener('click', () => !document.fullscreenElement ? playerWrap.requestFullscreen() : document.exitFullscreen());
+  pipBtn.addEventListener('click', () => document.pictureInPictureElement ? document.exitPictureInPicture() : video.requestPictureInPicture());
+  
+  video.addEventListener('waiting', ()=>loaderWrap.classList.add('active'));
+  video.addEventListener('playing', ()=>loaderWrap.classList.remove('active'));
+  
+  video.addEventListener('error', () => {
+      loaderWrap.classList.remove('active');
+      console.error("Error loading video.");
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if(e.code === 'ArrowRight') { video.currentTime += 5; showSeekFeedback('forward_5'); }
+    if(e.code === 'ArrowLeft') { video.currentTime -= 5; showSeekFeedback('replay_5'); }
+    if(e.key.toLowerCase() === 'f') fsBtn.click();
+    if(e.key.toLowerCase() === 'm') muteBtn.click();
+  });
+
+})();
+</script>
+</body>
+</html>
