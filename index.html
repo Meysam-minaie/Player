@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Meysam Player - Fixed Subtitles</title>
+<title>Meysam Player - American Gangster</title>
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
   :root{
@@ -14,7 +14,20 @@
     --text-shadow: 0 1px 2px rgba(0,0,0,0.6);
   }
 
-  /* استایل پایه برای پلیر */
+  /* --- Subtitle Customization Variables --- */
+  video::cue {
+    color: var(--sub-color, #fff) !important;
+    font-size: var(--sub-size, 1em) !important;
+    /* Note: Transform on cue works in some browsers, others might need specific webkit pseudos */
+    transform: translateY(var(--sub-pos, 0px)) !important; 
+    background-color: rgba(0,0,0,0.5); /* Default semi-transparent background for readability */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+  }
+  /* Webkit specific for better positioning support if needed */
+  video::-webkit-media-text-track-display {
+      transform: translateY(var(--sub-pos, 0px));
+  }
+
   * { box-sizing: border-box; outline: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   
   html, body {
@@ -43,7 +56,6 @@
 
   video { width: 100%; height: auto; display: block; }
 
-  /* --- کنترل‌ها --- */
   .controls {
     position: absolute; left: 0; right: 0; bottom: 0;
     padding: 0 16px 12px 16px;
@@ -142,7 +154,6 @@
   }
   .progress-wrap:hover .seek-tooltip { opacity: 1; }
 
-  /* --- منوی تنظیمات --- */
   .settings-menu-container {
     position: absolute; bottom: 55px; right: 0; width: 260px;
     background: var(--panel-bg); border-radius: 12px;
@@ -177,7 +188,7 @@
   .menu-item.selected::before { content: '✓'; margin-right: 10px; font-weight: bold; color: var(--accent); }
   .menu-item:not(.selected) { padding-left: 35px; }
 
-  /* استایل پالت رنگ */
+  /* Color Swatches Styles */
   .color-grid { display: flex; gap: 10px; padding: 10px 16px; justify-content: center; }
   .color-swatch { 
       width: 30px; height: 30px; border-radius: 50%; cursor: pointer; 
@@ -186,7 +197,7 @@
   .color-swatch:hover { transform: scale(1.1); }
   .color-swatch.active-swatch { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
 
-  /* استایل اسلایدر */
+  /* Slider Styles for Settings */
   .setting-slider-wrap { padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
   .setting-slider { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; }
   .setting-slider::-webkit-slider-runnable-track { height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; }
@@ -229,7 +240,6 @@
   @keyframes feedbackFade { 0% { opacity: 1; transform: translate(-50%,-50%) scale(0.8); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.4); } }
 
 </style>
-<style id="dynamicSubStyle"></style>
 </head>
 <body>
 
@@ -237,7 +247,6 @@
   <video width="640" height="360" id="video"> 
     <source src="https://cdn.fastedgestorage.com/22/224e5a7ea4830fbbe29633777a5796d9/506c7572696275732e5330314530342e343830702e5745422e444c2e4d794d6f76697a2e6d7034/EAEBBN/1763762207/b84afaa24552dd9e3ff3a703c8790ced45dcdc==/5.116.244.47/1150/" type="video/mp4">
     <track src="fa.vtt" kind="subtitles" srclang="fa" label="Persian" default>
-    Your browser does not support the video.
   </video>
 
   <div class="loader-wrap" id="loaderWrap"><div class="spinner"></div></div>
@@ -423,6 +432,7 @@
   const settingsBtn = document.getElementById('settingsBtn');
   const settingsMenu = document.getElementById('settingsMenu');
   
+  // Panels
   const mainMenuPanel = document.getElementById('mainMenuPanel');
   const speedPanel = document.getElementById('speedPanel');
   const subMainPanel = document.getElementById('subMainPanel');
@@ -430,6 +440,7 @@
   const subSizePanel = document.getElementById('subSizePanel');
   const subPosPanel = document.getElementById('subPosPanel');
 
+  // Navigation Buttons
   const toSpeedBtn = document.getElementById('toSpeedBtn');
   const toSubSettingsBtn = document.getElementById('toSubSettingsBtn');
   const toSubColorBtn = document.getElementById('toSubColorBtn');
@@ -438,12 +449,10 @@
   
   const currentSpeedText = document.getElementById('currentSpeedText');
   
+  // Subtitle Input Elements
   const subSizeRange = document.getElementById('subSizeRange');
   const subPosRange = document.getElementById('subPosRange');
   const colorSwatches = document.querySelectorAll('.color-swatch');
-  
-  // این تگ را برای تزریق مستقیم استایل‌ها اضافه کردیم
-  const dynamicSubStyle = document.getElementById('dynamicSubStyle');
 
   let hideControlsTimer;
   let isDragging = false;
@@ -474,10 +483,11 @@
     else ccBtn.classList.remove('active');
   });
 
-  /* --- منطق منوی تنظیمات --- */
+  /* --- Settings Menu Logic --- */
   
   function closeMenu() {
     settingsMenu.classList.remove('active');
+    // Reset to main menu after animation
     setTimeout(() => {
         document.querySelectorAll('.menu-content').forEach(p => p.classList.remove('active-panel'));
         mainMenuPanel.classList.add('active-panel');
@@ -485,6 +495,7 @@
   }
 
   function switchPanel(targetPanelId) {
+    // Find currently active panel
     const active = settingsMenu.querySelector('.active-panel');
     if(active) active.classList.remove('active-panel');
     
@@ -492,6 +503,7 @@
     if(target) target.classList.add('active-panel');
   }
 
+  // Generic Back Buttons
   document.querySelectorAll('.back-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -504,38 +516,31 @@
     if(!e.target.closest('.settings-menu-container') && !e.target.closest('#settingsBtn')) closeMenu();
   });
 
+  // Main Menu Navigation
   toSpeedBtn.addEventListener('click', () => switchPanel('speedPanel'));
   toSubSettingsBtn.addEventListener('click', () => switchPanel('subMainPanel'));
+
+  // Subtitle Menu Navigation
   toSubColorBtn.addEventListener('click', () => switchPanel('subColorPanel'));
   toSubSizeBtn.addEventListener('click', () => switchPanel('subSizePanel'));
   toSubPosBtn.addEventListener('click', () => switchPanel('subPosPanel'));
 
-  /* --- منطق اصلاح شده زیرنویس (Inject Styles) --- */
+  /* --- Subtitle Logic & Styling --- */
   
+  // Load settings from local storage
   const savedSubSettings = JSON.parse(localStorage.getItem('subSettings')) || {
       color: '#ffffff',
       size: 1,
       pos: 0
   };
 
-  // تابع جدید: به جای متغیر، مستقیماً CSS Rule را می‌نویسد
+  // Apply saved settings
   function applySubSettings() {
-      const cssRules = `
-        video::cue {
-            color: ${savedSubSettings.color} !important;
-            font-size: ${savedSubSettings.size}em !important;
-            transform: translateY(${-savedSubSettings.pos}px) !important;
-            background-color: rgba(0,0,0,0.5);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
-        }
-        /* پشتیبانی بهتر برای موتورهای Webkit (Chrome/Edge) */
-        video::-webkit-media-text-track-display {
-            transform: translateY(${-savedSubSettings.pos}px) !important;
-        }
-      `;
-      dynamicSubStyle.innerHTML = cssRules;
-
-      // آپدیت کردن وضعیت دکمه‌ها
+      video.style.setProperty('--sub-color', savedSubSettings.color);
+      video.style.setProperty('--sub-size', savedSubSettings.size + 'em');
+      video.style.setProperty('--sub-pos', -savedSubSettings.pos + 'px'); // Invert for intuitive "Up" = negative translateY
+      
+      // Update UI elements
       subSizeRange.value = savedSubSettings.size;
       subPosRange.value = savedSubSettings.pos;
       colorSwatches.forEach(s => {
@@ -549,7 +554,7 @@
       localStorage.setItem('subSettings', JSON.stringify(savedSubSettings));
   }
 
-  // Color Logic
+  // 1. Color Logic
   colorSwatches.forEach(swatch => {
       swatch.addEventListener('click', () => {
           colorSwatches.forEach(s => s.classList.remove('active-swatch'));
@@ -560,14 +565,14 @@
       });
   });
 
-  // Size Logic
+  // 2. Size Logic
   subSizeRange.addEventListener('input', (e) => {
       savedSubSettings.size = e.target.value;
       applySubSettings();
       saveSettings();
   });
 
-  // Position Logic
+  // 3. Position Logic
   subPosRange.addEventListener('input', (e) => {
       savedSubSettings.pos = e.target.value;
       applySubSettings();
@@ -724,3 +729,4 @@
 </script>
 </body>
 </html>
+
