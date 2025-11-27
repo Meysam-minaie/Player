@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Meysam Player - Fixed</title>
+<title>Meysam Player - Final Build</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -94,7 +94,7 @@
     width: 16px; height: 16px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5);
   }
   
-  /* Tooltip Fix */
+  /* Tooltip Fixed Styles */
   .seek-tooltip { 
     position: absolute; bottom: 25px; background: rgba(0,0,0,0.9); 
     padding: 4px 8px; border-radius: 4px; font-size: 12px; 
@@ -225,8 +225,9 @@
 
 <div class="player-wrap paused" id="playerWrap"> 
   <video id="video" crossorigin="anonymous" playsinline> 
-  <source src="https://node392-sector7693439.eu.cold-storage.cdn50.cc/e8/e87d4ae6d29c7e3a9731290a2de47c6a/5468652e436f6e6a7572696e672e4c6173742e52697465732e323032352e343830702e5745422e444c2e4475626c652e4d794d6f76697a2e6d7034/EAEBBN/1764224200/b9c51d3e78057ea05687f550b22be0cf35dcdc==/5.52.168.183/1150/">
-  <track src="fa.vtt" kind="subtitles" srclang="fa" label="Persian" default>
+    <source src="https://node392-sector7693439.eu.cold-storage.cdn50.cc/e8/e87d4ae6d29c7e3a9731290a2de47c6a/5468652e436f6e6a7572696e672e4c6173742e52697465732e323032352e343830702e5745422e444c2e4475626c652e4d794d6f76697a2e6d7034/EAEBBN/1764224200/b9c51d3e78057ea05687f550b22be0cf35dcdc==/5.52.168.183/1150/" type="video/mp4">
+    <track id="subtitleTrack" src="fa.vtt" kind="subtitles" srclang="fa" label="Persian" default>
+    Your browser does not support the video.
   </video>
 
   <div id="customSubtitleLayer">
@@ -277,6 +278,7 @@
                  <div class="menu-value"><i class="material-icons" style="font-size:16px;">chevron_right</i></div>
                </button>
             </div>
+            
             <div class="menu-content" id="speedPanel">
                 <div class="panel-header">
                    <button class="icon back-btn" data-target="mainMenuPanel"><i class="material-icons">arrow_forward</i></button>
@@ -406,6 +408,7 @@
                  customSubtitleText.textContent = track.activeCues[0].text;
                  customSubtitleLayer.style.display = 'block';
              } else {
+                 customSubtitleText.textContent = '';
                  customSubtitleLayer.style.display = 'none';
              }
         };
@@ -446,7 +449,6 @@
   document.querySelectorAll('.back-btn').forEach(btn => {
       btn.addEventListener('click', (e) => { e.stopPropagation(); switchPanel(btn.dataset.target === 'mainMenuPanel' ? 'main' : 'subMain'); });
   });
-  // (Menu navigation bindings remain the same as previous stable version)
   document.getElementById('toSpeedBtn').addEventListener('click', () => switchPanel('speed'));
   document.getElementById('toSubSettingsBtn').addEventListener('click', () => switchPanel('subMain'));
   document.getElementById('toSubColorBtn').addEventListener('click', () => switchPanel('subColor'));
