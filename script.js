@@ -196,3 +196,4 @@
   video.addEventListener('playing', ()=>loaderWrap.classList.remove('active'));
 
 })();
+
