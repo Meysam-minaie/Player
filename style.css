@@ -29,6 +29,13 @@ html, body {
   position: absolute; font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; pointer-events: none;
 }
 
+/* MOBILE OPTIMIZATION FOR INTRO */
+@media (max-width: 600px) {
+  .welcome-text {
+    font-size: 2.5em; /* Scaled down for mobile screens */
+  }
+}
+
 /* --- PLAYER STYLES --- */
 .player-wrap {
   position: relative; width: 100%; max-width: 100%; height: 100vh;   
@@ -75,7 +82,13 @@ video { width: 100%; height: 100%; object-fit: contain; display: block; }
 .progress {
   width: 100%; height: 4px; background: rgba(255,255,255,0.3); position: relative; border-radius: 2px; transition: height 0.1s;
 }
-.progress-wrap:hover .progress { height: 6px; }
+
+/* HOVER & DRAG STATE FIX */
+.progress-wrap:hover .progress,
+.progress-wrap.scrubbing .progress { 
+  height: 10px; 
+}
+
 .progress .bar {
   height: 100%; background: var(--accent); width: 0%; border-radius: 2px; position: relative;
 }
@@ -91,7 +104,12 @@ video { width: 100%; height: 100%; object-fit: contain; display: block; }
   opacity: 0; pointer-events: none; transform: translateX(-50%);
   transition: opacity 0.1s; white-space: nowrap;
 }
-.progress-wrap:hover .seek-tooltip { opacity: 1; }
+
+/* TOOLTIP VISIBILITY FIX */
+.progress-wrap:hover .seek-tooltip,
+.progress-wrap.scrubbing .seek-tooltip { 
+  opacity: 1; 
+}
 
 .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .section-left, .section-right { display: flex; align-items: center; gap: 8px; }
@@ -144,7 +162,6 @@ button.icon.active::after {
     .settings-menu-container {
         position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
         border-radius: 16px 16px 0 0; transform: translateY(100%); margin: 0;
-        /* SAFE AREA FIX */
         padding-bottom: env(safe-area-inset-bottom);
     }
     .settings-menu-container.active { transform: translateY(0); }
