@@ -7,8 +7,6 @@
   const playerWrap = document.getElementById('playerWrap');
 
   function cinematicIntro() {
-    // Note: Reliance on setTimeout for timing carries a risk if assets load slowly,
-    // but no code change is required here per instructions.
     setTimeout(() => { welcome1.style.opacity = 1; welcome1.style.transform = 'translateZ(0px)'; }, 800);
     setTimeout(() => { welcome1.style.opacity = 0; }, 1800);
     setTimeout(() => { welcome2.style.opacity = 1; welcome2.style.transform = 'translateZ(0px)'; }, 2000);
@@ -52,7 +50,6 @@
         track.mode = 'hidden'; 
         ccBtn.classList.add('active');
         track.oncuechange = () => {
-             // Safety Check: Ensure activeCues exists and has length
              if(isSubtitleEnabled && track.activeCues && track.activeCues.length > 0) {
                  customSubtitleText.textContent = track.activeCues[0].text;
                  customSubtitleLayer.style.display = 'block';
@@ -118,90 +115,120 @@
   // --- TOUCH / MOUSE CONTROLS ---
   function showControls() { playerWrap.classList.remove('hide-controls'); clearTimeout(hideControlsTimer); }
   function hideControls() { if (!video.paused && !settingsMenu.classList.contains('active')) playerWrap.classList.add('hide-controls'); }
+  
   function startHideTimer() { clearTimeout(hideControlsTimer); hideControlsTimer = setTimeout(hideControls, 5000); }
+  
   playerWrap.addEventListener('mousemove', () => { showControls(); if(!video.paused) startHideTimer(); });
 
+  // --- OPTIMIZED TOUCH LOGIC ---
   let lastTapTime = 0;
-  // Touch latency reduced to 200ms
-  const DOUBLE_TAP_DELAY = 200; 
-  
+  let singleTapTimer = null;
+  const DOUBLE_TAP_DELAY = 250; 
+
   playerWrap.addEventListener('touchstart', (e) => {
       if(e.target.closest('.controls') || e.target.closest('.settings-menu-container')) return;
+
       const currentTime = new Date().getTime();
       const tapLength = currentTime - lastTapTime;
-      lastTapTime = currentTime;
-      
+
       if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
           e.preventDefault(); 
+          clearTimeout(singleTapTimer); 
+          
           const touchX = e.changedTouches[0].clientX;
           if(touchX < playerWrap.offsetWidth / 2) {
-              video.currentTime -= 10; showFeedback(document.getElementById('seekFeedbackLeft'));
+              video.currentTime -= 10; 
+              showFeedback(document.getElementById('seekFeedbackLeft'));
           } else {
-              video.currentTime += 10; showFeedback(document.getElementById('seekFeedbackRight'));
+              video.currentTime += 10; 
+              showFeedback(document.getElementById('seekFeedbackRight'));
           }
+          lastTapTime = 0; 
       } else {
-          setTimeout(() => {
-              // Only execute if no second tap occurred
-              if (new Date().getTime() - lastTapTime >= DOUBLE_TAP_DELAY) {
-                  if(playerWrap.classList.contains('hide-controls')) { showControls(); startHideTimer(); } else { hideControls(); }
+          lastTapTime = currentTime;
+          singleTapTimer = setTimeout(() => {
+              if(playerWrap.classList.contains('hide-controls')) { 
+                  showControls(); 
+                  startHideTimer(); 
+              } else { 
+                  hideControls(); 
               }
           }, DOUBLE_TAP_DELAY);
       }
   });
+  
   function showFeedback(el) { el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
 
-  // --- PROGRESS BAR LOGIC (OPTIMIZED) ---
-  // Performance Fix: Only bind window listeners when dragging starts
+  // --- PROGRESS BAR LOGIC (Enhanced Feedback) ---
   
+  // Helper: Updates the visual bar and the video time
   function handleSeek(clientX) {
       const rect = progressWrap.getBoundingClientRect();
       const pct = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width;
       bar.style.width = (pct*100)+'%';
       video.currentTime = pct * video.duration;
+      return pct; // Return percentage for tooltip
   }
 
-  // Mouse Interactions
-  function onMouseMove(e) { if(isDragging) handleSeek(e.clientX); }
+  // Helper: Updates only the tooltip text/position
+  function updateTooltip(clientX) {
+      const rect = progressWrap.getBoundingClientRect();
+      const pct = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width;
+      seekTooltip.style.left = (pct * 100) + '%';
+      seekTooltip.textContent = formatTime(pct * (video.duration || 0));
+  }
+
+  // Global Drag Handlers
+  function onMouseMove(e) { 
+      if(isDragging) {
+          handleSeek(e.clientX);
+          updateTooltip(e.clientX); 
+      }
+  }
   function onMouseUp() {
       isDragging = false;
+      progressWrap.classList.remove('scrubbing'); 
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
   }
   
   progressWrap.addEventListener('mousedown', (e) => {
       isDragging = true;
+      progressWrap.classList.add('scrubbing'); 
       handleSeek(e.clientX);
+      updateTooltip(e.clientX);
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
   });
 
-  // Touch Interactions
+  // Touch Dragging
   function onTouchMove(e) {
       if(isDragging) {
-          e.preventDefault(); // Prevent scrolling while scrubbing
+          e.preventDefault(); 
           handleSeek(e.touches[0].clientX);
+          updateTooltip(e.touches[0].clientX); 
       }
   }
   function onTouchEnd() {
       isDragging = false;
+      progressWrap.classList.remove('scrubbing');
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('touchend', onTouchEnd);
   }
 
   progressWrap.addEventListener('touchstart', (e) => {
       isDragging = true;
+      progressWrap.classList.add('scrubbing');
       handleSeek(e.touches[0].clientX);
+      updateTooltip(e.touches[0].clientX);
       window.addEventListener('touchmove', onTouchMove, {passive: false});
       window.addEventListener('touchend', onTouchEnd);
   }, {passive: false});
 
-
+  // Hover Interaction (Non-dragging)
   progressWrap.addEventListener('mousemove', (e) => {
-      const rect = progressWrap.getBoundingClientRect();
-      const pct = (e.clientX - rect.left) / rect.width;
-      const safePct = Math.min(Math.max(0, pct), 1);
-      seekTooltip.style.left = (safePct * 100) + '%';
-      seekTooltip.textContent = formatTime(safePct * (video.duration || 0));
+      // Only update if not currently dragging global (to avoid conflict/flicker)
+      if(!isDragging) updateTooltip(e.clientX);
   });
 
   // --- TIME UPDATE ---
