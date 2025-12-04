@@ -7,6 +7,8 @@
   const playerWrap = document.getElementById('playerWrap');
 
   function cinematicIntro() {
+    // Note: Reliance on setTimeout for timing carries a risk if assets load slowly,
+    // but no code change is required here per instructions.
     setTimeout(() => { welcome1.style.opacity = 1; welcome1.style.transform = 'translateZ(0px)'; }, 800);
     setTimeout(() => { welcome1.style.opacity = 0; }, 1800);
     setTimeout(() => { welcome2.style.opacity = 1; welcome2.style.transform = 'translateZ(0px)'; }, 2000);
@@ -50,7 +52,8 @@
         track.mode = 'hidden'; 
         ccBtn.classList.add('active');
         track.oncuechange = () => {
-             if(isSubtitleEnabled && track.activeCues[0]) {
+             // Safety Check: Ensure activeCues exists and has length
+             if(isSubtitleEnabled && track.activeCues && track.activeCues.length > 0) {
                  customSubtitleText.textContent = track.activeCues[0].text;
                  customSubtitleLayer.style.display = 'block';
              } else {
@@ -119,12 +122,16 @@
   playerWrap.addEventListener('mousemove', () => { showControls(); if(!video.paused) startHideTimer(); });
 
   let lastTapTime = 0;
+  // Touch latency reduced to 200ms
+  const DOUBLE_TAP_DELAY = 200; 
+  
   playerWrap.addEventListener('touchstart', (e) => {
       if(e.target.closest('.controls') || e.target.closest('.settings-menu-container')) return;
       const currentTime = new Date().getTime();
       const tapLength = currentTime - lastTapTime;
       lastTapTime = currentTime;
-      if (tapLength < 300 && tapLength > 0) {
+      
+      if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
           e.preventDefault(); 
           const touchX = e.changedTouches[0].clientX;
           if(touchX < playerWrap.offsetWidth / 2) {
@@ -134,21 +141,60 @@
           }
       } else {
           setTimeout(() => {
-              if (new Date().getTime() - lastTapTime >= 300) {
+              // Only execute if no second tap occurred
+              if (new Date().getTime() - lastTapTime >= DOUBLE_TAP_DELAY) {
                   if(playerWrap.classList.contains('hide-controls')) { showControls(); startHideTimer(); } else { hideControls(); }
               }
-          }, 300);
+          }, DOUBLE_TAP_DELAY);
       }
   });
   function showFeedback(el) { el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
 
-  // --- PROGRESS BAR LOGIC ---
-  progressWrap.addEventListener('mousedown', (e)=>{ isDragging = true; seek(e); });
-  progressWrap.addEventListener('touchstart', (e)=>{ isDragging = true; seek(e.touches[0]); }, {passive: false});
-  window.addEventListener('mousemove', (e)=>{ if(isDragging) seek(e); });
-  window.addEventListener('touchmove', (e)=>{ if(isDragging) seek(e.touches[0]); }, {passive: false});
-  window.addEventListener('mouseup', ()=>{ isDragging = false; });
-  window.addEventListener('touchend', ()=>{ isDragging = false; });
+  // --- PROGRESS BAR LOGIC (OPTIMIZED) ---
+  // Performance Fix: Only bind window listeners when dragging starts
+  
+  function handleSeek(clientX) {
+      const rect = progressWrap.getBoundingClientRect();
+      const pct = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width;
+      bar.style.width = (pct*100)+'%';
+      video.currentTime = pct * video.duration;
+  }
+
+  // Mouse Interactions
+  function onMouseMove(e) { if(isDragging) handleSeek(e.clientX); }
+  function onMouseUp() {
+      isDragging = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+  }
+  
+  progressWrap.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      handleSeek(e.clientX);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+  });
+
+  // Touch Interactions
+  function onTouchMove(e) {
+      if(isDragging) {
+          e.preventDefault(); // Prevent scrolling while scrubbing
+          handleSeek(e.touches[0].clientX);
+      }
+  }
+  function onTouchEnd() {
+      isDragging = false;
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+  }
+
+  progressWrap.addEventListener('touchstart', (e) => {
+      isDragging = true;
+      handleSeek(e.touches[0].clientX);
+      window.addEventListener('touchmove', onTouchMove, {passive: false});
+      window.addEventListener('touchend', onTouchEnd);
+  }, {passive: false});
+
 
   progressWrap.addEventListener('mousemove', (e) => {
       const rect = progressWrap.getBoundingClientRect();
@@ -157,13 +203,6 @@
       seekTooltip.style.left = (safePct * 100) + '%';
       seekTooltip.textContent = formatTime(safePct * (video.duration || 0));
   });
-
-  function seek(e) {
-    const rect = progressWrap.getBoundingClientRect();
-    const pct = Math.min(Math.max(0, e.clientX - rect.left), rect.width) / rect.width;
-    bar.style.width = (pct*100)+'%';
-    video.currentTime = pct * video.duration;
-  }
 
   // --- TIME UPDATE ---
   function formatTime(s){
@@ -196,4 +235,3 @@
   video.addEventListener('playing', ()=>loaderWrap.classList.remove('active'));
 
 })();
-
