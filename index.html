@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Meysam Player - Final Build</title>
+<title>Meysam Player</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -40,11 +40,11 @@
     
     <div class="controls-row">
       <div class="section-left">
-        <button id="playBtn" class="icon"><i class="material-icons">play_arrow</i></button>
+        <button id="playBtn" class="icon" aria-label="Play"><i class="material-icons">play_arrow</i></button>
         
         <div class="volume-control">
-          <button id="muteBtn" class="icon"><i class="material-icons" id="muteIcon">volume_up</i></button>
-          <input id="volume" type="range" min="0" max="1" step="0.01" value="1">
+          <button id="muteBtn" class="icon" aria-label="Mute"><i class="material-icons" id="muteIcon">volume_up</i></button>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
         </div>
         
         <div class="time-display">
@@ -56,14 +56,14 @@
 
       <div class="section-right">
         <div class="icon-group">
-          <button id="ccBtn" class="icon"><i class="material-icons">closed_caption</i></button>
-          <button id="settingsBtn" class="icon"><i class="material-icons">settings</i></button>
+          <button id="ccBtn" class="icon" aria-label="Toggle Captions"><i class="material-icons">closed_caption</i></button>
+          <button id="settingsBtn" class="icon" aria-label="Settings"><i class="material-icons">settings</i></button>
 
           <div class="settings-menu-container" id="settingsMenu">
             <div class="menu-content active-panel" id="mainMenuPanel">
                <div class="panel-header" style="justify-content:center; border:none;">Settings</div>
                
-               <button class="menu-item" id="toSpeedBtn">
+               <button class="menu-item" id="toSpeedBtn" aria-label="Playback Speed">
                  <div style="display:flex; align-items:center"><i class="material-icons left-icon">slow_motion_video</i> <span>Speed</span></div>
                  <div class="menu-value"><span id="currentSpeedText">Normal</span> <i class="material-icons" style="font-size:16px;">chevron_right</i></div>
                </button>
@@ -71,7 +71,7 @@
             
             <div class="menu-content" id="speedPanel">
                 <div class="panel-header">
-                   <button class="icon back-btn" data-target="mainMenuPanel"><i class="material-icons">arrow_forward</i></button>
+                   <button class="icon back-btn" data-target="mainMenuPanel" aria-label="Back"><i class="material-icons">arrow_forward</i></button>
                    <span>Speed</span>
                 </div>
                 <button class="menu-item" data-speed="0.5">0.5x</button>
@@ -81,8 +81,8 @@
                 <button class="menu-item" data-speed="2">2x</button>
             </div>
           </div>
-          <button id="pipBtn" class="icon"><i class="material-icons">picture_in_picture_alt</i></button>
-          <button id="fsBtn" class="icon"><i class="material-icons">fullscreen</i></button>
+          <button id="pipBtn" class="icon" aria-label="Picture in Picture"><i class="material-icons">picture_in_picture_alt</i></button>
+          <button id="fsBtn" class="icon" aria-label="Fullscreen"><i class="material-icons">fullscreen</i></button>
         </div>
       </div>
     </div>
@@ -92,5 +92,3 @@
 <script src="script.js"></script>
 </body>
 </html>
-
-
