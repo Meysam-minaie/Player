@@ -144,6 +144,8 @@ button.icon.active::after {
     .settings-menu-container {
         position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
         border-radius: 16px 16px 0 0; transform: translateY(100%); margin: 0;
+        /* SAFE AREA FIX */
+        padding-bottom: env(safe-area-inset-bottom);
     }
     .settings-menu-container.active { transform: translateY(0); }
     .time-display { display: none; } 
