@@ -118,7 +118,7 @@
   // --- TOUCH / MOUSE CONTROLS ---
   function showControls() { playerWrap.classList.remove('hide-controls'); clearTimeout(hideControlsTimer); }
   function hideControls() { if (!video.paused && !settingsMenu.classList.contains('active')) playerWrap.classList.add('hide-controls'); }
-  function startHideTimer() { clearTimeout(hideControlsTimer); hideControlsTimer = setTimeout(hideControls, 3000); }
+  function startHideTimer() { clearTimeout(hideControlsTimer); hideControlsTimer = setTimeout(hideControls, 5000); }
   playerWrap.addEventListener('mousemove', () => { showControls(); if(!video.paused) startHideTimer(); });
 
   let lastTapTime = 0;
